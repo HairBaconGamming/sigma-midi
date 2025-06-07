@@ -19,7 +19,6 @@
   padding-bottom: var(--spacing-lg);
   border-bottom: 1px solid var(--color-border);
   animation: fadeInUpStagger 0.5s ease-out forwards;
-  opacity: 0; /* Start hidden for animation */
 }
 
 .repository-icon {
@@ -62,7 +61,6 @@
   border-radius: var(--border-radius-lg);
   box-shadow: var(--shadow-md);
   animation: fadeInUpStagger 0.5s 0.15s ease-out forwards; /* Staggered animation */
-  opacity: 0;
 }
 
 .search-control {
@@ -202,7 +200,6 @@
   border-top: 1px solid var(--color-border);
   gap: var(--spacing-sm);
   animation: fadeInUpStagger 0.5s 0.3s ease-out forwards; /* Staggered animation */
-  opacity: 0;
 }
 .pagination-controls button, .pagination-controls span {
   padding: var(--spacing-sm) var(--spacing-md);

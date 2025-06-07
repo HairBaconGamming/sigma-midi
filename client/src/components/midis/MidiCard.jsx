@@ -40,7 +40,7 @@ const MidiCard = ({ midi }) => {
   };
 
   // Placeholder for thumbnail - replace with actual logic if you have thumbnails
-  const thumbnailUrl = midi.thumbnail_url || `/api/midis/placeholder-thumbnail/${midi.id % 10}.png`; // Example dynamic placeholder
+  const thumbnailUrl = midi.thumbnail_url || `https://upload.wikimedia.org/wikipedia/commons/a/a0/MIDI_LOGO.svg`; // Example dynamic placeholder
 
   return (
     <div className="midi-card">

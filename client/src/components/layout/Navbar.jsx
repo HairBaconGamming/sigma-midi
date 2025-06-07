@@ -46,7 +46,7 @@ const Navbar = () => {
         <div className={`navbar-links ${isMobileMenuOpen ? 'open' : ''}`}>
           <ul>
             <li>
-              <a href="https://your-music-platform-link.com" target="_blank" rel="noopener noreferrer" title="Music Platform" onClick={closeMobileMenu}>
+              <a href="/" target="_blank" rel="noopener noreferrer" title="Music Platform" onClick={closeMobileMenu}>
                 <FaMusic /> <span className="nav-icon-text">Music</span>
               </a>
             </li>
