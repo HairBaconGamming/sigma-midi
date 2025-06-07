@@ -1,0 +1,255 @@
+/* client/src/assets/css/ProfilePage.css */
+.profile-page-container {
+  max-width: 960px; /* Slightly narrower for focused content */
+  margin: var(--spacing-xl) auto;
+  padding: var(--spacing-xs); /* Minimal padding, sections will handle their own */
+  animation: profilePageAppear 0.6s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+}
+
+@keyframes profilePageAppear {
+  from { opacity: 0; transform: translateY(25px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.profile-header {
+  background: linear-gradient(135deg, var(--color-background-medium) 0%, var(--color-background-dark) 100%);
+  padding: var(--spacing-xxl) var(--spacing-xl);
+  border-radius: var(--border-radius-lg);
+  margin-bottom: var(--spacing-xl);
+  text-align: center;
+  position: relative; /* For potential decorative elements or overlays */
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--color-border);
+  overflow: hidden; /* If using pseudo-elements for bg effects */
+}
+
+/* Optional: Subtle animated gradient background for header */
+/*
+.profile-header::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(120deg, var(--color-primary-light), transparent, var(--color-secondary-light));
+  background-size: 200% 200%;
+  animation: gradientBG 15s ease infinite;
+  z-index: 0;
+  opacity: 0.3;
+}
+@keyframes gradientBG {
+	0% { background-position: 0% 50%; }
+	50% { background-position: 100% 50%; }
+	100% { background-position: 0% 50%; }
+}
+.profile-header > * { position: relative; z-index: 1; } /* Ensure content is above pseudo-element */
+*/
+
+
+.profile-avatar-placeholder {
+  width: 160px; /* Larger avatar */
+  height: 160px;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+  color: var(--color-background-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 4.5rem;
+  font-weight: 700;
+  font-family: var(--font-display);
+  margin: 0 auto var(--spacing-lg) auto; /* Center and add bottom margin */
+  box-shadow: 0 0 0 8px var(--color-background-medium), 0 0 0 12px var(--color-primary);
+  overflow: hidden;
+  position: relative; /* For image inside */
+  transition: transform 0.3s ease-in-out;
+}
+.profile-avatar-placeholder:hover {
+    transform: scale(1.05);
+}
+
+.profile-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-header h1 {
+  font-family: var(--font-display);
+  font-size: 2.75rem;
+  color: var(--color-text-light);
+  margin-bottom: var(--spacing-xs);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.profile-email {
+  font-size: 1.1rem;
+  color: var(--color-text-dark);
+  margin-bottom: var(--spacing-lg);
+}
+
+.profile-edit-btn {
+  /* Using global .btn and .btn-outline */
+  font-weight: 600;
+  padding: var(--spacing-sm) var(--spacing-xl); /* Wider button */
+  border-radius: var(--border-radius-full);
+  border-color: var(--color-secondary);
+  color: var(--color-secondary);
+  transition: var(--transition-default), transform 0.1s ease;
+}
+.profile-edit-btn:hover {
+  background-color: var(--color-secondary);
+  border-color: var(--color-secondary);
+  color: var(--color-text-light);
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 4px 10px rgba(139, 92, 246, 0.3);
+}
+
+
+/* Profile Edit Form Styling (if implemented) */
+.profile-edit-form {
+  background-color: var(--color-background-medium);
+  padding: var(--spacing-xl);
+  border-radius: var(--border-radius-lg);
+  margin-bottom: var(--spacing-xl);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-border);
+}
+.profile-edit-form .form-group {
+  margin-bottom: var(--spacing-lg);
+}
+.profile-edit-form label {
+  display: block;
+  font-weight: 600;
+  color: var(--color-text-medium);
+  margin-bottom: var(--spacing-sm);
+  font-size: 0.95rem;
+}
+.profile-edit-form input[type="text"],
+.profile-edit-form textarea {
+  /* Use global input styles from App.css or define specific ones */
+  background-color: var(--color-background-input);
+  border-color: var(--color-border);
+  padding: var(--spacing-md);
+}
+.profile-edit-form textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+.profile-edit-form .btn-primary { /* Assuming a global .btn-primary style */
+    width: 100%;
+    padding: var(--spacing-md);
+    font-size: 1.05rem;
+}
+
+
+/* Profile Sections (Details, Activity) */
+.profile-section { /* Common class for sections */
+  background-color: var(--color-background-medium);
+  padding: var(--spacing-xl);
+  border-radius: var(--border-radius-lg);
+  margin-bottom: var(--spacing-xl);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-border);
+  animation: sectionFadeInUp 0.5s ease-out forwards;
+  opacity: 0; /* Start hidden */
+}
+/* Stagger animations for sections */
+.profile-details { animation-delay: 0.1s; }
+.profile-activity { animation-delay: 0.2s; }
+
+@keyframes sectionFadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+
+.profile-section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-family: var(--font-display);
+  font-size: 1.6rem; /* Slightly larger section titles */
+  color: var(--color-text-light);
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+  font-weight: 600;
+}
+.profile-section-header .icon { /* For icons next to section titles */
+  color: var(--color-primary);
+  font-size: 1.3em; /* Relative to h3 */
+}
+
+
+.profile-detail-item {
+  margin-bottom: var(--spacing-md);
+}
+.profile-detail-item:last-child {
+  margin-bottom: 0;
+}
+
+.profile-detail-item h4 { /* Sub-headings within a detail item if needed */
+  font-size: 1.05rem;
+  color: var(--color-text-medium);
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs);
+}
+
+.profile-detail-item p, .profile-detail-item div {
+  color: var(--color-text-dark);
+  line-height: 1.75;
+  font-size: 1rem;
+}
+.profile-detail-item p strong, .profile-detail-item div strong {
+  color: var(--color-text-medium);
+  font-weight: 600;
+  margin-right: var(--spacing-xs);
+}
+
+/* Placeholder style for activity items */
+.activity-list {
+  list-style: none;
+  padding-left: 0;
+}
+.activity-item {
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px dashed var(--color-border-hover);
+  font-size: 0.95rem;
+  color: var(--color-text-dark);
+}
+.activity-item:last-child {
+  border-bottom: none;
+}
+.activity-item .activity-date {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-left: var(--spacing-sm);
+}
+
+
+@media (max-width: 768px) {
+  .profile-page-container {
+    padding: var(--spacing-xs);
+  }
+  .profile-header {
+    padding: var(--spacing-lg) var(--spacing-md);
+  }
+  .profile-avatar-placeholder {
+    width: 120px;
+    height: 120px;
+    font-size: 3.5rem;
+    box-shadow: 0 0 0 6px var(--color-background-medium), 0 0 0 9px var(--color-primary);
+  }
+  .profile-header h1 {
+    font-size: 2.25rem;
+  }
+  .profile-email {
+    font-size: 1rem;
+  }
+
+  .profile-section {
+    padding: var(--spacing-lg);
+  }
+  .profile-section-header {
+    font-size: 1.3rem;
+  }
+}
