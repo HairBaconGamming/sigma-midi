@@ -1,0 +1,31 @@
+/* client/src/assets/css/index.css */
+/* This file can be used for very global resets or base styles if App.css isn't sufficient.
+   For this project, most global styles are in App.css.
+   You can leave this file empty or add specific resets if needed. */
+
+/* Example Reset (optional) */
+/*
+html {
+  box-sizing: border-box;
+  font-size: 16px;
+}
+
+*, *:before, *:after {
+  box-sizing: inherit;
+}
+
+body, h1, h2, h3, h4, h5, h6, p, ol, ul {
+  margin: 0;
+  padding: 0;
+  font-weight: normal;
+}
+
+ol, ul {
+  list-style: none;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+*/
