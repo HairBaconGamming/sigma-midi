@@ -3,53 +3,69 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: calc(100vh - 70px - 80px); /* Adjust based on navbar/footer */
-  padding: 2rem 1rem;
-  animation: authPageFadeIn 0.5s ease-out;
+  min-height: calc(100vh - 75px - var(--spacing-xxl) * 2); /* Navbar height + top/bottom padding */
+  padding: var(--spacing-xl) var(--spacing-md);
+  animation: authPageFadeInUp 0.5s var(--transition-timing-function) forwards;
 }
 
-@keyframes authPageFadeIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+@keyframes authPageFadeInUp {
+  from { opacity: 0; transform: translateY(20px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .auth-form-card {
-  background-color: var(--surface-color);
-  padding: 2.5rem 2rem; /* Increased padding */
-  border-radius: var(--border-radius-md);
-  box-shadow: var(--box-shadow-medium);
+  background-color: var(--color-background-medium);
+  padding: var(--spacing-xl) var(--spacing-lg);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-xl); /* More pronounced shadow */
   width: 100%;
-  max-width: 420px; /* Slightly wider */
+  max-width: 450px; /* Slightly wider for better spacing */
   text-align: center;
-  border-top: 4px solid var(--primary-color);
+  border-top: 5px solid var(--color-primary); /* Thicker accent border */
+  position: relative; /* For potential decorative elements */
+  overflow: hidden; /* If using pseudo-elements for background patterns */
 }
+/* Optional: Subtle background pattern
+.auth-form-card::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  background-image: url('data:image/svg+xml,...'); // Your subtle SVG pattern
+  opacity: 0.03;
+  pointer-events: none;
+}
+*/
+
 
 .auth-form-header {
-  margin-bottom: 2rem;
+  margin-bottom: var(--spacing-xl);
 }
 
 .auth-form-icon {
-  font-size: 3rem;
-  color: var(--primary-color);
-  margin-bottom: 0.75rem;
+  font-size: 3.5rem; /* Larger icon */
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-md);
+  display: inline-block; /* To apply margin */
+  filter: drop-shadow(0 2px 3px rgba(16, 185, 129, 0.3));
 }
 
 .auth-form-header h2 {
-  font-size: 1.8rem;
-  color: var(--text-color);
-  margin-bottom: 0.5rem;
+  font-family: var(--font-display);
+  font-size: 2rem; /* Larger heading */
+  color: var(--color-text-light);
+  margin-bottom: var(--spacing-sm);
   font-weight: 700;
 }
 
 .auth-form-header p {
-  font-size: 0.95rem;
-  color: var(--text-color-secondary);
+  font-size: 1rem;
+  color: var(--color-text-dark);
 }
 
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 1.2rem; /* Space between form groups */
+  gap: var(--spacing-lg); /* Increased gap */
 }
 
 .form-group-auth {
@@ -58,101 +74,154 @@
 
 .form-group-auth .input-icon {
   position: absolute;
-  left: 15px;
+  left: var(--spacing-md);
   top: 50%;
   transform: translateY(-50%);
-  color: var(--text-color-muted);
-  font-size: 1rem;
+  color: var(--color-text-dark);
+  font-size: 1.125rem; /* Slightly larger input icon */
+  pointer-events: none; /* Allow click through to input */
+  transition: color var(--transition-default);
 }
+.form-group-auth input:focus ~ .input-icon {
+    color: var(--color-primary);
+}
+
 
 .form-group-auth input[type="text"],
 .form-group-auth input[type="password"],
 .form-group-auth input[type="email"] {
   width: 100%;
-  padding: 0.9rem 1rem 0.9rem 2.8rem; /* Padding for icon */
-  border: 1px solid var(--border-color);
-  background-color: var(--surface-color-lighter);
-  color: var(--text-color);
-  border-radius: var(--border-radius-sm);
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-md) calc(var(--spacing-md) * 2 + 1.125rem + var(--spacing-xs)); /* Adjusted padding for icon: left_padding + icon_size + icon_margin_right */
+  border: 1.5px solid var(--color-border);
+  background-color: var(--color-background-input);
+  color: var(--color-text-light);
+  border-radius: var(--border-radius-md); /* Consistent radius */
   font-size: 1rem;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.form-group-auth input:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px rgba(0, 194, 168, 0.2); /* Focus ring */
+  font-weight: 500; /* Slightly bolder input text */
+  transition: border-color var(--transition-default), box-shadow var(--transition-default);
 }
 .form-group-auth input::placeholder {
-    color: var(--text-color-muted);
+  color: var(--color-text-dark);
+  font-weight: 400;
+}
+.form-group-auth input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
 }
 
 
-.btn-auth { /* General button style for auth forms */
-  padding: 0.9rem 1.5rem;
-  font-size: 1rem;
+.btn-auth.btn-submit-auth { /* Specific submit button */
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: 1.05rem; /* Slightly larger button text */
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-radius: var(--border-radius-sm);
-  transition: background-color var(--transition-fast), transform var(--transition-fast);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
+  letter-spacing: 0.8px;
+  border-radius: var(--border-radius-md);
+  background: linear-gradient(45deg, var(--color-primary), var(--color-primary-hover));
+  color: var(--color-background-dark); /* Dark text on light primary gradient */
+  margin-top: var(--spacing-sm);
+  box-shadow: var(--shadow-sm);
+  transition: background-position var(--transition-medium) ease, transform var(--transition-fast) ease, box-shadow var(--transition-medium) ease;
+  background-size: 200% auto; /* For gradient animation */
+}
+.btn-auth.btn-submit-auth:hover:not(:disabled) {
+  background-position: right center; /* Change gradient direction on hover */
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: var(--shadow-md);
+}
+.btn-auth.btn-submit-auth:active:not(:disabled) {
+    transform: translateY(0px) scale(1);
 }
 
-.btn-submit-auth {
-  background-color: var(--primary-color);
-  color: #fff;
-  margin-top: 0.5rem; /* Space above button */
-}
-.btn-submit-auth:hover {
-  background-color: var(--primary-hover-color);
-  transform: translateY(-2px);
-}
-.btn-submit-auth:disabled {
-  background-color: var(--text-color-muted);
+.btn-auth.btn-submit-auth:disabled {
+  background: var(--color-text-disabled); /* Different disabled background */
   cursor: not-allowed;
   transform: translateY(0);
+  box-shadow: none;
 }
-.btn-submit-auth:disabled:hover {
-  background-color: var(--text-color-muted); /* Keep same color when disabled and hovered */
+.btn-auth.btn-submit-auth:disabled .spinner-btn { /* Spinner color for disabled state */
+    border-top-color: var(--color-background-input);
+    border-left-color: var(--color-background-input); /* Match border color */
+    border-right-color: var(--color-background-input);
+    border-bottom-color: var(--color-text-light); /* Light spinner part */
 }
 
 
-.error-message-form {
-  color: var(--error-color);
-  background-color: rgba(255, 107, 107, 0.1);
-  padding: 0.8rem 1rem;
-  border-radius: var(--border-radius-sm);
-  margin-bottom: 1.5rem;
-  font-size: 0.9rem;
-  border: 1px solid rgba(255, 107, 107, 0.3);
-  text-align: left; /* Align text left for better readability */
+.spinner-btn { /* Spinner for button (already in App.css, ensure consistency) */
+  width: 20px;
+  height: 20px;
+  border-width: 3px;
+  border-color: rgba(255, 255, 255, 0.3);
+  border-top-color: #fff; /* For primary button */
 }
+
+
+.error-message-form { /* Use global alert style from App.css if defined and suitable */
+  /* Or keep specific if needed */
+  background-color: var(--color-error-bg);
+  color: var(--color-error);
+  border: 1px solid var(--color-error);
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  border-radius: var(--border-radius-md);
+  font-size: 0.9375rem;
+  text-align: left; /* Better for detailed error messages */
+  display: flex;
+  align-items: flex-start; /* Align icon to top */
+  gap: var(--spacing-sm);
+}
+.error-message-form::before { /* Optional: Error icon */
+  content: "!"; /* Or use a react-icon */
+  font-weight: bold;
+  font-size: 1.2rem;
+  line-height: 1.2;
+  margin-right: var(--spacing-xs);
+}
+
 
 .auth-switch-prompt {
-  margin-top: 2rem;
-  font-size: 0.9rem;
-  color: var(--text-color-secondary);
+  margin-top: var(--spacing-xl);
+  font-size: 0.9375rem;
+  color: var(--color-text-dark);
 }
-
-.auth-link {
-  color: var(--primary-color);
-  font-weight: 500;
+.auth-switch-prompt .auth-link {
+  color: var(--color-primary);
+  font-weight: 600; /* Bolder link */
   text-decoration: none;
+  position: relative; /* For underline animation */
 }
-.auth-link:hover {
-  text-decoration: underline;
-  color: var(--primary-hover-color);
+.auth-switch-prompt .auth-link::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 1.5px;
+  display: block;
+  margin-top: 2px;
+  right: 0;
+  background: var(--color-primary);
+  transition: width .2s ease;
+  -webkit-transition: width .2s ease;
+}
+.auth-switch-prompt .auth-link:hover::after {
+  width: 100%;
+  left: 0;
+  background-color: var(--color-primary-hover);
+}
+.auth-switch-prompt .auth-link:hover {
+  color: var(--color-primary-hover);
+  text-decoration: none; /* Remove default underline if using custom */
 }
 
-/* Spinner for button */
-.spinner-btn {
-  width: 18px;
-  height: 18px;
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  border-left-color: #fff;
-  /* Animation is global */
+
+/* Add some subtle floating animation to the card if desired */
+/*
+.auth-form-card {
+  animation: float 6s ease-in-out infinite;
 }
+@keyframes float {
+	0% { transform: translatey(0px); }
+	50% { transform: translatey(-8px); }
+	100% { transform: translatey(0px); }
+}
+*/

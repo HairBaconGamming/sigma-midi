@@ -1,31 +1,138 @@
 /* client/src/assets/css/index.css */
-/* This file can be used for very global resets or base styles if App.css isn't sufficient.
-   For this project, most global styles are in App.css.
-   You can leave this file empty or add specific resets if needed. */
+/* This file is often used for global resets, font imports, or base HTML/body styles
+   that are not component-specific. Much of this might already be in App.css,
+   but it's good practice to have a dedicated spot for true global overrides or setups.
+*/
 
-/* Example Reset (optional) */
 /*
-html {
+  Example of a more comprehensive CSS Reset (like normalize.css or a modern reset)
+  You might not need all of this if your component styles are well-scoped or
+  if you're using a UI library that handles resets.
+*/
+
+/* Box sizing rules */
+*,
+*::before,
+*::after {
   box-sizing: border-box;
-  font-size: 16px;
 }
 
-*, *:before, *:after {
-  box-sizing: inherit;
-}
-
-body, h1, h2, h3, h4, h5, h6, p, ol, ul {
+/* Remove default margin and padding */
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed,
+figure, figcaption, footer, header, hgroup,
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
   margin: 0;
   padding: 0;
-  font-weight: normal;
+  border: 0;
+  font-size: 100%;
+  font: inherit; /* Inherit font styles from body or html */
+  vertical-align: baseline;
 }
 
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure,
+footer, header, hgroup, menu, nav, section {
+  display: block;
+}
+
+/* Set core root defaults */
+html {
+  line-height: 1.5; /* Default line height */
+  -webkit-text-size-adjust: 100%; /* Prevent zooming on mobile */
+  -moz-tab-size: 4; /* Consistent tab size */
+  tab-size: 4;
+  scroll-behavior: smooth; /* Smooth scrolling for anchor links */
+}
+
+body {
+  /* Font family and background are set in App.css via :root variables */
+  /* Ensure body takes up at least the full viewport height */
+  min-height: 100vh;
+  text-rendering: optimizeSpeed; /* Or optimizeLegibility, depending on preference */
+}
+
+/* List reset */
 ol, ul {
   list-style: none;
 }
 
-img {
-  max-width: 100%;
-  height: auto;
+/* Blockquote and q reset */
+blockquote, q {
+  quotes: none;
 }
+blockquote:before, blockquote:after,
+q:before, q:after {
+  content: '';
+  content: none;
+}
+
+/* Table reset */
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+/* Remove text decorations on links by default (can be overridden) */
+a {
+  text-decoration: none;
+  /* Color is set in App.css */
+}
+
+/* Make images responsive by default */
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* Inherit fonts for inputs and buttons */
+input, button, textarea, select {
+  font: inherit;
+}
+
+/* Accessible focus states (can be customized further) */
+:focus-visible {
+  outline: 2px solid var(--color-primary, #10b981); /* Fallback color if var not defined yet */
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px var(--color-primary-light, rgba(16, 185, 129, 0.2));
+}
+/* Remove default outline for non-keyboard focus if desired, but ensure :focus-visible is styled */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+
+/* Optional: For hiding elements accessibly */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+
+/*
+  If you intend to use CSS Modules or styled-components extensively,
+  this index.css might be very minimal, primarily for font imports
+  and perhaps a very basic body background color.
+  The :root variables are already in App.css, which is good.
+*/
+
+/*
+  Font import (if not already in App.css or public/index.html)
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700&display=swap');
 */

@@ -1,94 +1,393 @@
+/* client/src/assets/css/Navbar.css */
 .navbar {
-  background-color: #1e1e1e; /* Màu nền tối cho navbar */
-  padding: 0.8rem 2rem;
+  background-color: var(--color-background-medium);
+  height: 75px; /* Increased height for a more spacious feel */
   display: flex;
   align-items: center;
+  justify-content: center; /* Center the container */
+  padding: 0 var(--spacing-lg);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: var(--shadow-md);
+  transition: background-color var(--transition-duration) var(--transition-timing-function);
+}
+/* Optional: Subtle background change on scroll
+.navbar.scrolled {
+  background-color: rgba(30, 41, 59, 0.85); /* Slightly transparent Slate 800
+  backdrop-filter: blur(8px);
+}
+*/
+
+.navbar-container {
+  display: flex;
   justify-content: space-between;
-  color: #e0e0e0;
-  border-bottom: 1px solid #333; /* Đường viền mỏng phía dưới */
+  align-items: center;
+  width: 100%;
+  max-width: 1320px; /* Slightly wider max-width */
 }
 
-.navbar h1 {
-  margin: 0;
-  font-size: 1.8rem; /* Kích thước chữ cho logo/tên app */
-  font-weight: bold;
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  transition: transform var(--transition-duration) ease-in-out;
+}
+.navbar-brand:hover {
+  transform: scale(1.03);
 }
 
-.navbar h1 a {
-  color: #e0e0e0;
+.navbar-brand a {
   text-decoration: none;
+  display: flex;
+  align-items: center;
 }
 
-.navbar ul {
+.navbar-brand .brand-sigma {
+  font-family: var(--font-display);
+  font-size: 2rem; /* Larger brand name */
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: -0.5px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.navbar-brand .brand-midi {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 500;
+  color: var(--color-text-light);
+  margin-left: 4px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Main Navigation Links (Right side) */
+.navbar-links {
+  display: flex;
+  align-items: center;
+}
+
+.navbar-links ul {
   list-style: none;
   padding: 0;
   margin: 0;
   display: flex;
   align-items: center;
+  gap: var(--spacing-sm);
 }
 
-.navbar ul li {
-  margin-left: 1.5rem; /* Khoảng cách giữa các mục menu */
+.navbar-links ul li {
+  position: relative;
 }
 
-.navbar ul li a,
-.navbar ul li span {
-  color: #c0c0c0; /* Màu chữ cho các mục menu */
+/* Styling for icon links (Music, Scores, Community) */
+.navbar-links ul li > a:not(.btn-nav),
+.navbar-links ul li > button:not(.btn-nav) {
+  color: var(--color-text-dark);
   text-decoration: none;
-  font-size: 0.95rem;
-  transition: color 0.2s ease-in-out;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius-md);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-weight: 500;
+  font-size: 0.9375rem; /* 15px */
+  position: relative; /* For pseudo-element underline */
+  overflow: hidden; /* For underline animation */
+}
+.navbar-links ul li > a:not(.btn-nav)::after,
+.navbar-links ul li > button:not(.btn-nav)::after {
+  content: '';
+  position: absolute;
+  bottom: 0.3rem; /* Position of underline */
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background-color: var(--color-primary);
+  transition: width var(--transition-duration) var(--transition-timing-function), left var(--transition-duration) var(--transition-timing-function);
 }
 
-.navbar ul li a:hover {
-  color: #ffffff; /* Sáng hơn khi hover */
+.navbar-links ul li > a:not(.btn-nav):hover,
+.navbar-links ul li > button:not(.btn-nav):hover {
+  color: var(--color-text-light);
+}
+.navbar-links ul li > a:not(.btn-nav):hover::after,
+.navbar-links ul li > button:not(.btn-nav):hover::after {
+  width: calc(100% - var(--spacing-md) * 1.5); /* Adjust width based on padding */
+  left: calc(var(--spacing-md) * 0.75);
 }
 
-.navbar ul li span { /* Dành cho "Hi, username" */
-  cursor: default;
+.nav-icon-text {
+  display: none; /* Hidden by default, shown on larger screens */
 }
 
-.nav-icons {
+/* Buttons in Navbar (Upload, Login, Register) */
+.btn-nav {
+  padding: 0.6rem 1.2rem !important;
+  font-weight: 600;
+  font-size: 0.875rem !important; /* 14px */
+  border-radius: var(--border-radius-full) !important; /* Pill shape */
+  box-shadow: var(--shadow-sm);
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.4rem !important;
+  transition: var(--transition-default), transform 0.1s ease-out;
+}
+.btn-nav:hover {
+    transform: translateY(-1px) scale(1.02);
+    box-shadow: var(--shadow-md);
+}
+.btn-nav:active {
+    transform: translateY(0) scale(1);
+}
+.btn-nav svg {
+    font-size: 1rem; /* Icon size within buttons */
+}
+
+.btn-upload {
+  background: linear-gradient(45deg, var(--color-primary), var(--color-primary-hover)) !important;
+  color: var(--color-background-dark) !important;
+  border: none !important;
+}
+
+.btn-login {
+  background-color: var(--color-background-light) !important;
+  color: var(--color-text-light) !important;
+  border: 1px solid var(--color-border) !important;
+}
+.btn-login:hover {
+  background-color: var(--color-border) !important;
+  border-color: var(--color-border-hover) !important;
+}
+
+.btn-register { /* More prominent register button */
+  background: linear-gradient(45deg, var(--color-secondary), var(--color-secondary-hover)) !important;
+  color: var(--color-text-light) !important;
+  border: none !important;
+}
+
+/* User Dropdown Styling */
+.nav-user-dropdown {
+  margin-left: var(--spacing-sm);
+}
+.user-avatar-container {
   display: flex;
   align-items: center;
+  cursor: pointer;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-full);
+  transition: background-color var(--transition-default);
+  min-width: 0; /* Fix for flexbox shrinking */
+}
+.user-avatar-container:hover {
+  background-color: var(--color-background-light);
+}
+.user-avatar-icon {
+  font-size: 1.75rem; /* Larger avatar */
+  color: var(--color-text-dark);
+  transition: color var(--transition-default);
+}
+.user-avatar-container:hover .user-avatar-icon {
+    color: var(--color-primary);
+}
+.user-name {
+  font-weight: 600;
+  color: var(--color-text-light);
+  font-size: 0.9375rem;
+  margin-left: var(--spacing-sm);
+  display: none; /* Hidden by default, shown on larger screens */
 }
 
-.nav-icons span, /* Placeholder cho icons */
-.nav-icons a {
-  color: #b0b0b0;
-  font-size: 1.3rem; /* Kích thước icon */
-  margin-left: 1.2rem;
-  text-decoration: none;
-  transition: color 0.2s ease-in-out;
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + var(--spacing-sm)); /* Space from navbar */
+  right: 0;
+  background-color: var(--color-background-medium);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-lg);
+  min-width: 220px; /* Wider dropdown */
+  z-index: 1001;
+  padding: var(--spacing-sm) 0;
+  overflow: hidden;
+  animation: dropdownFadeInScaleUp 0.2s var(--transition-timing-function) forwards;
+  transform-origin: top right;
+}
+@keyframes dropdownFadeInScaleUp {
+  from { opacity: 0; transform: scale(0.95) translateY(-5px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-.nav-icons span:hover,
-.nav-icons a:hover {
-  color: #ffffff;
+.nav-user-dropdown:hover .dropdown-menu,
+.nav-user-dropdown:focus-within .dropdown-menu {
+  display: block;
 }
 
-/* Nút login/register (nếu bạn muốn style riêng cho nút này) */
-.navbar .btn-login, .navbar .btn-register {
-  background-color: #007bff; /* Màu nút login/register ví dụ */
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 5px;
-  font-size: 0.9rem;
+.dropdown-menu li a,
+.dropdown-menu li button {
+  display: flex; /* Use flex for icon alignment */
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  text-align: left;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  color: var(--color-text-medium);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  background: none;
   border: none;
   cursor: pointer;
 }
-.navbar .btn-login:hover, .navbar .btn-register:hover {
-  background-color: #0056b3;
+.dropdown-menu li a:hover,
+.dropdown-menu li button:hover {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+}
+.dropdown-menu li a svg,
+.dropdown-menu li button svg {
+    font-size: 1rem; /* Icon size in dropdown */
+    opacity: 0.8;
+}
+.dropdown-menu li a:hover svg,
+.dropdown-menu li button:hover svg {
+    opacity: 1;
 }
 
-/* Placeholder cho icon profile, bạn có thể dùng ảnh hoặc icon thật */
-.profile-icon-placeholder {
-  /* Ví dụ nếu dùng ảnh:
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background-color: #555;
-  display: inline-block;
-  text-align: center;
-  line-height: 30px;
-  */
+.btn-dropdown-logout {
+    color: var(--color-error) !important; /* Error color for logout */
+}
+.btn-dropdown-logout:hover {
+    background-color: var(--color-error-bg) !important;
+    color: var(--color-error) !important;
+}
+
+/* Mobile Menu Hamburger Icon */
+.navbar-menu-icon {
+  display: none;
+  cursor: pointer;
+  padding: var(--spacing-sm);
+  z-index: 1002; /* Above mobile menu overlay */
+}
+.hamburger {
+  width: 28px;
+  height: 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around; /* Distribute lines evenly */
+}
+.hamburger span {
+  display: block;
+  height: 3px;
+  width: 100%;
+  background-color: var(--color-text-light);
+  border-radius: var(--border-radius-full);
+  transition: all 0.3s var(--transition-timing-function);
+  transform-origin: center;
+}
+.hamburger.open span:nth-child(1) {
+  transform: translateY(9.5px) rotate(45deg);
+}
+.hamburger.open span:nth-child(2) {
+  opacity: 0;
+  transform: translateX(-100%);
+}
+.hamburger.open span:nth-child(3) {
+  transform: translateY(-9.5px) rotate(-45deg);
+}
+
+/* Responsive Adjustments */
+@media (min-width: 992px) { /* Show text next to icons on larger screens */
+  .nav-icon-text {
+    display: inline;
+    margin-left: 0.4rem;
+  }
+  .nav-button-text {
+    display: inline;
+  }
+  .user-name {
+    display: inline; /* Show username */
+  }
+}
+
+@media (max-width: 991px) { /* Tablet and Mobile */
+  .navbar-links {
+    display: none;
+    flex-direction: column;
+    align-items: stretch; /* Make items full width */
+    width: 100%;
+    position: absolute;
+    top: 75px; /* Below navbar height */
+    left: 0;
+    background-color: var(--color-background-medium); /* Same as navbar */
+    padding: var(--spacing-md) 0;
+    box-shadow: var(--shadow-lg);
+    border-top: 1px solid var(--color-border);
+    transform: translateX(-100%);
+    transition: transform 0.35s cubic-bezier(0.23, 1, 0.32, 1); /* Smooth slide */
+  }
+  .navbar-links.open {
+    display: flex;
+    transform: translateX(0);
+  }
+  .navbar-links ul {
+    flex-direction: column;
+    width: 100%;
+    gap: 0;
+  }
+  .navbar-links ul li {
+    width: 100%;
+    text-align: left; /* Align text left for mobile menu items */
+  }
+  .navbar-links ul li > a:not(.btn-nav),
+  .navbar-links ul li > button:not(.btn-nav) {
+    padding: var(--spacing-md) var(--spacing-lg);
+    width: 100%;
+    justify-content: flex-start; /* Align icon and text to start */
+    border-radius: 0;
+  }
+  .navbar-links ul li > a:not(.btn-nav)::after, /* Remove underline animation on mobile */
+  .navbar-links ul li > button:not(.btn-nav)::after {
+    display: none;
+  }
+
+  .btn-nav { /* Stack buttons in mobile menu */
+    width: calc(100% - var(--spacing-lg) * 2);
+    margin: var(--spacing-sm) var(--spacing-lg);
+    justify-content: center;
+  }
+
+  .nav-user-dropdown {
+    width: 100%;
+    margin-left: 0;
+  }
+  .user-avatar-container {
+    justify-content: flex-start;
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-radius: 0;
+  }
+  .user-name {
+      display: inline; /* Show username in mobile menu */
+  }
+  .dropdown-menu { /* Full width dropdown on mobile */
+    position: static;
+    box-shadow: none;
+    border: none;
+    border-top: 1px solid var(--color-border);
+    width: 100%;
+    border-radius: 0;
+    animation: none; /* No animation for static display */
+    padding: 0;
+  }
+  .dropdown-menu li a,
+  .dropdown-menu li button {
+    padding: var(--spacing-md) var(--spacing-lg);
+    padding-left: var(--spacing-xl); /* Indent dropdown items */
+  }
+
+  .navbar-menu-icon {
+    display: flex;
+  }
+  .nav-icon-text, .nav-button-text { /* Always show text on mobile menu items */
+    display: inline;
+  }
 }
