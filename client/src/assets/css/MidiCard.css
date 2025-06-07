@@ -1,158 +1,182 @@
+/* client/src/assets/css/MidiCard.css */
 .midi-card {
-  background-color: #2a2a2a; /* Màu nền cho card */
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem; /* Khoảng cách giữa các card */
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-  color: #c0c0c0; /* Màu chữ mặc định trong card */
-  display: flex; /* Cho phép layout thumbnail bên trái, content bên phải nếu có */
-  flex-direction: column; /* Mặc định xếp chồng, có thể đổi thành row nếu có thumbnail */
-  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  background-color: var(--surface-color-lighter);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--box-shadow-light);
+  overflow: hidden; /* To contain the thumbnail and its overlay */
+  display: flex;
+  flex-direction: column;
+  transition: transform var(--transition-medium), box-shadow var(--transition-medium);
+  height: 100%; /* Make card fill grid cell height */
 }
 
 .midi-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: var(--box-shadow-medium);
 }
 
-/* Nếu bạn có thumbnail:
-.midi-thumbnail {
-  width: 120px;
-  height: 90px;
-  object-fit: cover;
-  border-radius: 6px;
-  margin-right: 1.5rem;
-  background-color: #383838;
+.card-link-wrapper { /* This wrapper will handle the main click area */
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1; /* Allow content to grow and push footer down */
 }
-*/
+
+
+.midi-card-thumbnail-container {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%; /* 16:9 Aspect Ratio */
+  background-color: #333; /* Placeholder background */
+  overflow: hidden;
+}
+
+.midi-card-thumbnail {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Cover the area, might crop */
+  transition: transform 0.4s ease-out;
+}
+.midi-card:hover .midi-card-thumbnail {
+  transform: scale(1.1);
+}
+
+.thumbnail-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity var(--transition-medium);
+}
+.midi-card:hover .thumbnail-overlay {
+  opacity: 1;
+}
+.play-icon-overlay {
+  font-size: 3rem;
+  color: rgba(255, 255, 255, 0.8);
+  text-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+
 
 .midi-card-content {
-  flex-grow: 1;
+  padding: 1rem 1.2rem;
+  flex-grow: 1; /* Allows content to take available space */
 }
 
-.midi-card h3 {
-  margin-top: 0;
-  margin-bottom: 0.5rem;
-  font-size: 1.4rem;
-}
-
-.midi-card h3 a {
-  color: #e0e0e0; /* Màu chữ cho tiêu đề */
-  text-decoration: none;
-  transition: color 0.2s ease;
-}
-
-.midi-card h3 a:hover {
-  color: #00c2a8; /* Màu khi hover tiêu đề */
-}
-
-.midi-card .artist {
-  font-size: 1rem;
-  color: #a0a0a0;
+.midi-card-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-color);
   margin-bottom: 0.3rem;
+  line-height: 1.3;
+  /* Ellipsis for long titles */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card-link-wrapper:hover .midi-card-title {
+    color: var(--primary-color);
 }
 
-.midi-card .details,
-.midi-card .arrangement,
-.midi-card .uploader {
-  font-size: 0.85rem;
-  color: #888;
-  margin-bottom: 0.2rem;
-  line-height: 1.4;
-}
 
-.midi-stats {
-  margin-top: 1rem;
-  margin-bottom: 1rem;
-  font-size: 0.8rem;
-  color: #777;
+.midi-card-artist,
+.midi-card-arrangement {
+  font-size: 0.9rem;
+  color: var(--text-color-secondary);
+  margin-bottom: 0.25rem;
   display: flex;
-  flex-wrap: wrap; /* Cho phép xuống dòng nếu không đủ chỗ */
-  gap: 0.3rem 1rem; /* Khoảng cách giữa các stat items */
-  border-top: 1px solid #383838;
-  padding-top: 0.8rem;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.midi-card-artist .icon,
+.midi-card-arrangement .icon {
+  color: var(--text-color-muted);
+  font-size: 0.8rem;
 }
 
-.midi-stats span {
-  display: inline-flex; /* Để icon và text thẳng hàng */
+.midi-card-details {
+  font-size: 0.8rem;
+  color: var(--text-color-muted);
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 0.4rem;
+}
+.midi-card-details .icon {
+    margin-right: 0.2rem;
+}
+
+
+.midi-card-footer {
+  padding: 0.75rem 1.2rem;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: rgba(0,0,0,0.1); /* Slightly different footer background */
+}
+
+.midi-card-stats {
+  display: flex;
+  gap: 0.8rem;
+  font-size: 0.8rem;
+  color: var(--text-color-muted);
   align-items: center;
 }
-.midi-stats span svg, /* Nếu dùng SVG icons */
-.midi-stats span /* Nếu dùng emoji icons */ {
-  margin-right: 0.3rem;
+.midi-card-stats span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.midi-card-stats .icon {
+  font-size: 0.85rem;
 }
 
-
-.midi-actions {
-  margin-top: 1rem;
+.midi-card-actions {
   display: flex;
-  gap: 0.75rem; /* Khoảng cách giữa các nút */
+  gap: 0.5rem;
 }
 
-.midi-actions .btn {
-  padding: 0.6rem 1.2rem;
-  border-radius: 5px;
-  text-decoration: none;
-  font-size: 0.9rem;
+.btn-card {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+  border-radius: var(--border-radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease;
-  border: none;
-  text-align: center;
 }
 
-.midi-actions .btn-download {
-  background-color: #007bff; /* Màu nút Download */
-  color: white;
+.btn-download-card {
+  background-color: var(--primary-color);
+  color: #fff;
+}
+.btn-download-card:hover {
+  background-color: var(--primary-hover-color);
 }
 
-.midi-actions .btn-download:hover {
-  background-color: #0056b3;
-}
-
-.midi-actions .btn-view {
+.btn-view-card {
   background-color: transparent;
-  color: #00c2a8; /* Màu nút View */
-  border: 1px solid #00c2a8;
+  color: var(--text-color-secondary);
+  border: 1px solid var(--text-color-muted);
+}
+.btn-view-card:hover {
+  background-color: var(--surface-color);
+  color: var(--text-color);
+  border-color: var(--text-color-secondary);
 }
 
-.midi-actions .btn-view:hover {
-  background-color: rgba(0, 194, 168, 0.1); /* Nền mờ khi hover */
-  color: #00e6c3;
-}
-
-/* CSS cho phần list các card (trong HomePage.jsx) */
-.midi-list {
-  display: grid;
-  /* grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));  Responsive grid */
-  /* Hoặc nếu bạn muốn 3 cột cố định như screenshot: */
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem; /* Khoảng cách giữa các card */
-  margin-top: 2rem;
-}
-
-/* Điều chỉnh cho màn hình nhỏ hơn nếu cần */
-@media (max-width: 992px) {
-  .midi-list {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 600px) {
-  .midi-list {
-    grid-template-columns: 1fr;
-  }
-  .midi-card {
-    /* Có thể cần điều chỉnh padding hoặc margin cho card trên mobile */
-  }
-  .midi-actions {
-    flex-direction: column; /* Xếp nút chồng lên nhau trên mobile */
-  }
-  .midi-actions .btn {
-    width: 100%; /* Nút chiếm toàn bộ chiều rộng */
-    margin-bottom: 0.5rem;
-  }
-  .midi-actions .btn:last-child {
-    margin-bottom: 0;
-  }
-}
+/* Grid for cards (defined in HomePage.css, but can be here too if specific) */
+/* .midi-grid { ... } */

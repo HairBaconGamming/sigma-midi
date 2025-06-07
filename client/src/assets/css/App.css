@@ -1,42 +1,325 @@
-#root {
-  max-width: 1280px;
+/* client/src/assets/css/Navbar.css */
+.navbar {
+  background-color: var(--surface-color);
+  padding: 0.8rem 1rem; /* Reduced horizontal padding for smaller screens */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-color);
+  position: sticky; /* Make navbar sticky */
+  top: 0;
+  z-index: 1000; /* Ensure it's above other content */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  height: 70px; /* Fixed height */
+}
+
+.navbar-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 1300px; /* Max width for content inside navbar */
   margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  padding: 0 1rem; /* Padding inside the container */
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.navbar-brand {
+  display: flex;
+  align-items: center;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
+.navbar-brand a {
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+}
+
+.navbar-brand .brand-sigma {
+  font-family: var(--font-brand);
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  letter-spacing: -1px;
+}
+
+.navbar-brand .brand-midi {
+  font-family: var(--font-brand);
+  font-size: 1.9rem;
+  font-weight: 500;
+  color: var(--text-color);
+  margin-left: 2px;
+}
+
+.navbar-links {
+  display: flex;
+  align-items: center;
+}
+
+.navbar-links ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem; /* Gap between main nav items */
+}
+
+.navbar-links ul li {
+  position: relative; /* For dropdown positioning */
+}
+
+.navbar-links ul li > a, /* Direct links and dropdown toggles */
+.navbar-links ul li > button {
+  color: var(--text-color-secondary);
+  text-decoration: none;
+  padding: 0.6rem 0.9rem;
+  border-radius: var(--border-radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.navbar-links ul li > a:hover,
+.navbar-links ul li > button:hover {
+  background-color: var(--surface-color-lighter);
+  color: var(--text-color);
+}
+
+.nav-icon-text {
+  display: none; /* Hide text by default, show on larger screens or if preferred */
+}
+
+/* Buttons in Navbar */
+.btn-nav {
+  padding: 0.6rem 1.1rem !important; /* Ensure padding is applied */
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.85rem !important;
+  border: 1px solid transparent;
+}
+
+.btn-upload {
+  background-color: var(--primary-color) !important;
+  color: #fff !important;
+  border-color: var(--primary-color) !important;
+}
+.btn-upload:hover {
+  background-color: var(--primary-hover-color) !important;
+  border-color: var(--primary-hover-color) !important;
+}
+
+.btn-login {
+  background-color: transparent !important;
+  color: var(--primary-color) !important;
+  border: 1px solid var(--primary-color) !important;
+}
+.btn-login:hover {
+  background-color: rgba(0, 194, 168, 0.1) !important; /* Primary color with alpha */
+  color: var(--primary-hover-color) !important;
+}
+
+.btn-register {
+  background-color: var(--secondary-color) !important;
+  color: #fff !important;
+  border-color: var(--secondary-color) !important;
+}
+.btn-register:hover {
+  background-color: var(--secondary-hover-color) !important;
+  border-color: var(--secondary-hover-color) !important;
+}
+
+
+/* User Dropdown */
+.nav-user-dropdown {
+  position: relative;
+}
+.user-avatar-container {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 0.6rem 0.9rem;
+  border-radius: var(--border-radius-sm);
+  transition: background-color var(--transition-fast);
+}
+.user-avatar-container:hover {
+  background-color: var(--surface-color-lighter);
+}
+.user-avatar-icon {
+  font-size: 1.5rem;
+  color: var(--text-color-secondary);
+  margin-right: 0.5rem;
+}
+.user-name {
+  font-weight: 500;
+  color: var(--text-color);
+  font-size: 0.9rem;
+}
+
+.dropdown-menu {
+  display: none; /* Hidden by default */
+  position: absolute;
+  top: 100%; /* Position below the user avatar */
+  right: 0;
+  background-color: var(--surface-color-lighter);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--box-shadow-medium);
+  min-width: 180px;
+  z-index: 1001;
+  padding: 0.5rem 0;
+  animation: fadeInDropdown 0.2s ease-out;
+}
+
+.nav-user-dropdown:hover .dropdown-menu,
+.nav-user-dropdown:focus-within .dropdown-menu { /* Show on hover or focus within */
+  display: block;
+}
+
+.dropdown-menu li a,
+.dropdown-menu li button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.75rem 1.2rem;
+  color: var(--text-color-secondary);
+  font-size: 0.9rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+.dropdown-menu li a:hover,
+.dropdown-menu li button:hover {
+  background-color: var(--primary-color);
+  color: #fff;
+}
+.btn-dropdown-logout {
+    display: flex !important;
+    align-items: center;
+    gap: 0.5rem;
+}
+.btn-dropdown-logout svg {
+    font-size: 1rem;
+}
+
+
+@keyframes fadeInDropdown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+
+/* Mobile Menu Hamburger */
+.navbar-menu-icon {
+  display: none; /* Hidden on larger screens */
+  cursor: pointer;
+}
+.hamburger {
+  width: 25px;
+  height: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.hamburger span {
+  display: block;
+  height: 3px;
+  width: 100%;
+  background-color: var(--text-color);
+  border-radius: 2px;
+  transition: all var(--transition-medium);
+}
+.hamburger.open span:nth-child(1) {
+  transform: translateY(8px) rotate(45deg);
+}
+.hamburger.open span:nth-child(2) {
+  opacity: 0;
+}
+.hamburger.open span:nth-child(3) {
+  transform: translateY(-9px) rotate(-45deg);
+}
+
+
+/* Responsive Navbar */
+@media (min-width: 769px) {
+  .nav-icon-text {
+    display: inline; /* Show text next to icons on larger screens */
+    margin-left: 0.3rem;
   }
-  to {
-    transform: rotate(360deg);
+  .nav-button-text {
+    display: inline;
+    margin-left: 0.3rem;
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+
+@media (max-width: 768px) {
+  .navbar-container {
+    padding: 0 0.5rem; /* Less padding on mobile */
+  }
+  .navbar-links {
+    display: none; /* Hide desktop links */
+    flex-direction: column;
+    width: 100%;
+    position: absolute;
+    top: 70px; /* Below navbar */
+    left: 0;
+    background-color: var(--surface-color);
+    padding: 1rem 0;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    animation: slideDownMobileMenu 0.3s ease-out forwards;
+  }
+  .navbar-links.open {
+    display: flex;
+  }
+  .navbar-links ul {
+    flex-direction: column;
+    width: 100%;
+    gap: 0;
+  }
+  .navbar-links ul li {
+    width: 100%;
+    text-align: center;
+  }
+  .navbar-links ul li > a,
+  .navbar-links ul li > button {
+    padding: 1rem;
+    width: 100%;
+    justify-content: center;
+    border-radius: 0;
+  }
+  .navbar-links ul li > a:hover,
+  .navbar-links ul li > button:hover {
+    background-color: var(--surface-color-lighter);
+  }
+
+  .nav-user-dropdown:hover .dropdown-menu,
+  .nav-user-dropdown:focus-within .dropdown-menu {
+    /* For mobile, dropdown might need different positioning or full width */
+    position: static; /* Or adjust as needed */
+    box-shadow: none;
+    border: none;
+    border-top: 1px solid var(--border-color);
+    width: 100%;
+  }
+  .dropdown-menu li a,
+  .dropdown-menu li button {
+    justify-content: center;
+  }
+
+  .navbar-menu-icon {
+    display: flex; /* Show hamburger on mobile */
+  }
+  .nav-icon-text, .nav-button-text {
+    display: inline; /* Always show text on mobile menu items */
   }
 }
 
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
+@keyframes slideDownMobileMenu {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
 }

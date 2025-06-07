@@ -1,79 +1,102 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom'; // Thêm useNavigate
+// client/src/components/layout/Navbar.jsx
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import '../../assets/css/Navbar.css'; // Đảm bảo đã import CSS
-
-// Placeholder icons (bạn nên thay thế bằng SVG hoặc thư viện icon)
-const MusicNoteIcon = () => <span>🎵</span>;
-const TrophyIcon = () => <span>🏆</span>;
-const ChatIcon = () => <span>💬</span>; // Placeholder cho Discord hoặc forum
-const UploadIcon = () => <span>📤</span>; // Icon cho nút Upload
-const LoginIcon = () => <span>🔑</span>; // Icon cho nút Login/Register
+import { FaMusic, FaTrophy, FaDiscord, FaUpload, FaSignInAlt, FaUserCircle, FaSignOutAlt } from 'react-icons/fa'; // Using react-icons
+import '../../assets/css/Navbar.css';
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
-  const navigate = useNavigate(); // Hook để điều hướng
+  const navigate = useNavigate();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
-    navigate('/'); // Điều hướng về trang chủ sau khi logout
+    setIsMobileMenuOpen(false);
+    navigate('/');
+  };
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
   };
 
   return (
     <nav className="navbar">
-      <div className="navbar-brand">
-        <Link to="/">nanoMIDI</Link>
-      </div>
+      <div className="navbar-container">
+        <div className="navbar-brand">
+          <Link to="/" onClick={closeMobileMenu}>
+            {/* You can use an SVG logo here if you have one */}
+            <span className="brand-sigma">sigma</span>
+            <span className="brand-midi">MIDI</span>
+          </Link>
+        </div>
 
-      <div className="navbar-center">
-        {/* Có thể thêm các link điều hướng chính ở đây nếu cần */}
-        {/* Ví dụ: <Link to="/browse">Browse</Link> */}
-      </div>
+        <div className="navbar-menu-icon" onClick={toggleMobileMenu}>
+          <div className={`hamburger ${isMobileMenuOpen ? 'open' : ''}`}>
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
 
-      <div className="navbar-right">
-        <ul>
-          <li>
-            <a href="https://your-music-platform-link.com" target="_blank" rel="noopener noreferrer" title="Music Platform">
-              <MusicNoteIcon />
-            </a>
-          </li>
-          <li>
-            <Link to="/leaderboard" title="Leaderboard"> {/* Giả sử có trang leaderboard */}
-              <TrophyIcon />
-            </Link>
-          </li>
-          <li>
-            <a href="https://your-discord-link.com" target="_blank" rel="noopener noreferrer" title="Discord Community">
-              <ChatIcon />
-            </a>
-          </li>
-          {isAuthenticated ? (
-            <>
-              <li>
-                <Link to="/upload" className="btn btn-upload" title="Upload MIDI">
-                  <UploadIcon /> {/* Hoặc <UploadIcon /> Upload */}
-                </Link>
-              </li>
-              <li className="nav-user-info">
-                {/* Có thể thêm avatar ở đây */}
-                <span>Hi, {user?.username}</span>
-              </li>
-              <li>
-                <button onClick={handleLogout} className="btn btn-logout" title="Logout">
-                  Logout
-                </button>
-              </li>
-            </>
-          ) : (
-            <>
-              <li>
-                <Link to="/login" className="btn btn-login-register" title="Login or Register">
-                  <LoginIcon /> {/* Hoặc Login/Register */}
-                </Link>
-              </li>
-            </>
-          )}
-        </ul>
+        <div className={`navbar-links ${isMobileMenuOpen ? 'open' : ''}`}>
+          <ul>
+            <li>
+              <a href="https://your-music-platform-link.com" target="_blank" rel="noopener noreferrer" title="Music Platform" onClick={closeMobileMenu}>
+                <FaMusic /> <span className="nav-icon-text">Music</span>
+              </a>
+            </li>
+            <li>
+              <Link to="/leaderboard" title="Leaderboard" onClick={closeMobileMenu}>
+                <FaTrophy /> <span className="nav-icon-text">Scores</span>
+              </Link>
+            </li>
+            <li>
+              <a href="https://discord.gg/yourinvite" target="_blank" rel="noopener noreferrer" title="Discord Community" onClick={closeMobileMenu}>
+                <FaDiscord /> <span className="nav-icon-text">Community</span>
+              </a>
+            </li>
+            {isAuthenticated ? (
+              <>
+                <li>
+                  <Link to="/upload" className="btn btn-nav btn-upload" title="Upload MIDI" onClick={closeMobileMenu}>
+                    <FaUpload /> <span className="nav-button-text">Upload</span>
+                  </Link>
+                </li>
+                <li className="nav-user-dropdown">
+                  <div className="user-avatar-container">
+                    <FaUserCircle className="user-avatar-icon" />
+                    <span className="user-name">{user?.username}</span>
+                  </div>
+                  <ul className="dropdown-menu">
+                    <li><Link to="/profile" onClick={closeMobileMenu}>My Profile</Link></li>
+                    <li><Link to="/my-midis" onClick={closeMobileMenu}>My MIDIs</Link></li>
+                    <li><button onClick={handleLogout} className="btn-dropdown-logout">
+                        <FaSignOutAlt /> Logout
+                    </button></li>
+                  </ul>
+                </li>
+              </>
+            ) : (
+              <>
+                <li>
+                  <Link to="/login" className="btn btn-nav btn-login" title="Login" onClick={closeMobileMenu}>
+                    <FaSignInAlt /> <span className="nav-button-text">Login</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/register" className="btn btn-nav btn-register" title="Register" onClick={closeMobileMenu}>
+                    Register
+                  </Link>
+                </li>
+              </>
+            )}
+          </ul>
+        </div>
       </div>
     </nav>
   );

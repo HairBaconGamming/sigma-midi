@@ -1,157 +1,335 @@
-.midi-detail-page {
-  max-width: 900px;
-  margin: 2rem auto;
-  padding: 1rem;
-  color: #e0e0e0;
+/* client/src/assets/css/MidiDetailPage.css */
+.midi-detail-page-container {
+  max-width: 1000px;
+  margin: 1rem auto 3rem auto; /* Added bottom margin */
+  padding: 1rem 1.5rem;
+  animation: detailPageFadeIn 0.4s ease-out;
 }
 
-.midi-header {
-  text-align: center;
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #444;
+@keyframes detailPageFadeIn {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.midi-header h1 {
-  font-size: 2.5rem;
-  margin-bottom: 0.5rem;
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: var(--surface-color-lighter);
+  color: var(--text-color-secondary);
+  padding: 0.6rem 1rem;
+  border-radius: var(--border-radius-sm);
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+}
+.back-button:hover {
+  background-color: var(--surface-color);
+  color: var(--text-color);
 }
 
-.artist-info {
-  font-size: 1.1rem;
-  color: #b0b0b0;
-}
-
-.midi-content-layout {
+.midi-detail-header {
   display: flex;
   gap: 2rem;
+  align-items: flex-start; /* Align items to the top */
   margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--border-color);
 }
 
-.midi-info-panel {
-  flex: 2; /* Takes more space */
-  background-color: #2c2c2c;
-  padding: 1.5rem;
-  border-radius: 8px;
+.header-thumbnail-container {
+  flex-shrink: 0;
+  width: 200px; /* Fixed width for thumbnail */
+  height: 200px; /* Fixed height for thumbnail */
+  border-radius: var(--border-radius-md);
+  overflow: hidden;
+  background-color: var(--surface-color);
+  box-shadow: var(--box-shadow-light);
+}
+.header-thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-.midi-info-panel p {
-  margin-bottom: 0.8rem;
-  line-height: 1.6;
+.header-info {
+  flex-grow: 1;
 }
-.midi-info-panel p strong {
-    color: #c0c0c0;
-    min-width: 120px; /* Align text a bit */
-    display: inline-block;
+.header-info h1 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--text-color);
+  margin-bottom: 0.5rem;
+  line-height: 1.2;
 }
-.midi-info-panel a {
-    color: #00c2a8;
-    text-decoration: none;
-}
-.midi-info-panel a:hover {
-    text-decoration: underline;
-}
-
-
-.midi-description {
-  margin-top: 1.5rem;
-  margin-bottom: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px dashed #444;
-}
-.midi-description h4 {
-    margin-bottom: 0.5rem;
-}
-
-
-.midi-visual-panel {
-  flex: 1; /* Takes less space */
-  text-align: center;
-}
-
-.midi-thumbnail-large {
-  max-width: 100%;
-  height: auto;
-  border-radius: 8px;
-  background-color: #383838; /* Placeholder background */
-  border: 1px solid #555;
-  margin-bottom: 1rem;
-  min-height: 200px; /* Placeholder min height */
+.header-artist, .header-arrangement {
+  font-size: 1.1rem;
+  color: var(--text-color-secondary);
+  margin-bottom: 0.3rem;
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: #777;
+  gap: 0.5rem;
 }
-.advertisement-note {
-    font-size: 0.8rem;
-    color: #888;
+.header-artist .icon, .header-arrangement .icon {
+    color: var(--text-color-muted);
 }
 
-
-.btn-download { /* General download button style */
-  padding: 0.6rem 1.2rem;
-  background-color: #007bff; /* Blue for download */
-  color: white;
-  border: none;
-  border-radius: 4px;
-  text-decoration: none;
-  display: inline-block;
+.header-meta {
   margin-top: 1rem;
-  cursor: pointer;
-  font-weight: bold;
+  font-size: 0.85rem;
+  color: var(--text-color-muted);
+  display: flex;
+  flex-direction: column; /* Stack meta items */
+  gap: 0.4rem;
 }
-.btn-download:hover {
-  background-color: #0056b3;
+.header-meta span {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
-.btn-download.btn-primary { /* If using primary style for main download */
-    background-color: #009688;
+.header-meta .icon {
+    font-size: 0.9rem;
 }
-.btn-download.btn-primary:hover {
-    background-color: #00796b;
+.header-meta a {
+    color: var(--primary-color);
+    font-weight: 500;
 }
-
-
-.midi-player-controls {
-    margin-top: 2rem;
-    padding-top: 1rem;
-    border-top: 1px dashed #444;
-}
-.midi-player-controls .btn {
-    margin-right: 10px;
-    background-color: #555;
-    color: #fff;
-}
-.midi-player-controls .btn:hover {
-    background-color: #666;
+.header-meta a:hover {
+    color: var(--primary-hover-color);
 }
 
 
-.advertisement-section {
-    margin-top: 3rem;
-    padding: 1.5rem;
-    background-color: #252525;
-    border-radius: 8px;
-    text-align: center;
+.midi-detail-actions-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 0;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid var(--border-color);
 }
-.advertisement-section h4 {
-    margin-bottom: 1rem;
-    color: #aaa;
+
+.btn-detail-action {
+  padding: 0.8rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border-radius: var(--border-radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
-.ad-placeholder {
-    padding: 1rem;
-    border: 1px dashed #444;
+.btn-download-detail {
+  background-color: var(--primary-color);
+  color: #fff;
+}
+.btn-download-detail:hover {
+  background-color: var(--primary-hover-color);
+}
+.btn-play-detail {
+  background-color: var(--secondary-color);
+  color: #fff;
+}
+.btn-play-detail:hover {
+  background-color: var(--secondary-hover-color);
+}
+
+.detail-stats {
+  display: flex;
+  gap: 1.5rem;
+  font-size: 0.9rem;
+  color: var(--text-color-secondary);
+}
+.detail-stats span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.detail-stats .icon {
+  color: var(--text-color-muted);
+}
+
+
+.midi-player-visualizer-placeholder {
+  background-color: var(--surface-color);
+  border-radius: var(--border-radius-md);
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-color-muted);
+  margin-bottom: 2.5rem;
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid var(--border-color);
+}
+.midi-player-visualizer-placeholder p {
+    margin-bottom: 0.5rem;
+}
+.mock-player-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding: 0.5rem;
+    background-color: var(--surface-color-lighter);
+    border-radius: var(--border-radius-sm);
+}
+.mock-player-controls button {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    font-size: 1.5rem;
+}
+.mock-progress-bar {
+    flex-grow: 1;
+    height: 8px;
+    background-color: #444;
+    border-radius: 4px;
+    overflow: hidden;
+}
+.mock-progress-bar div {
+    width: 30%; /* Example progress */
+    height: 100%;
+    background-color: var(--primary-color);
     border-radius: 4px;
 }
-.btn-download-ad {
+.mock-player-controls span {
+    font-size: 0.85rem;
+    color: var(--text-color-secondary);
+}
+
+
+.midi-detail-section {
+  background-color: var(--surface-color);
+  padding: 1.5rem 2rem;
+  border-radius: var(--border-radius-md);
+  margin-bottom: 2rem;
+  border: 1px solid var(--border-color);
+}
+.midi-detail-section h3 {
+  font-size: 1.4rem;
+  color: var(--text-color);
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.midi-detail-section h3 .icon {
+    color: var(--primary-color);
+}
+
+.description-section .description-text {
+  line-height: 1.7;
+  color: var(--text-color-secondary);
+  white-space: pre-wrap; /* Preserve line breaks in description */
+}
+
+.metadata-section ul {
+  list-style: none;
+  padding-left: 0;
+}
+.metadata-section ul li {
+  margin-bottom: 0.6rem;
+  font-size: 0.95rem;
+  color: var(--text-color-secondary);
+}
+.metadata-section ul li strong {
+  color: var(--text-color);
+  margin-right: 0.5rem;
+  min-width: 150px; /* Align keys */
+  display: inline-block;
+}
+
+.advertisement-placeholder {
+  text-align: center;
+  background-color: var(--surface-color-lighter); /* Slightly different bg for ad */
+}
+.advertisement-placeholder h4 {
+    color: var(--text-color-muted);
+    font-weight: 500;
+}
+.ad-box {
+    padding: 1.5rem;
+    border: 1px dashed var(--text-color-muted);
+    border-radius: var(--border-radius-sm);
+    margin-top: 1rem;
+}
+.btn-ad-download {
     padding: 0.8rem 1.5rem;
     background-color: #4CAF50; /* Green for ad download */
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: var(--border-radius-sm);
     font-weight: bold;
     cursor: pointer;
     margin-bottom: 0.5rem;
+    text-transform: uppercase;
 }
-.btn-download-ad:hover {
+.btn-ad-download:hover {
     background-color: #45a049;
+}
+.ad-box small {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-color-muted);
+}
+
+
+.loading-container-page, .error-message-page, .no-results-message-page {
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  font-size: 1.2rem;
+  color: var(--text-color-secondary);
+}
+.error-message-page {
+  color: var(--error-color);
+}
+
+@media (max-width: 768px) {
+  .midi-detail-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .header-thumbnail-container {
+    width: 150px;
+    height: 150px;
+    margin-bottom: 1rem;
+  }
+  .header-info h1 {
+    font-size: 1.8rem;
+  }
+  .header-artist, .header-arrangement {
+    font-size: 1rem;
+    justify-content: center;
+  }
+  .header-meta {
+    align-items: center;
+  }
+  .midi-detail-actions-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .btn-detail-action {
+    width: 100%;
+    justify-content: center;
+  }
+  .detail-stats {
+    justify-content: center;
+    margin-top: 1rem;
+  }
+  .midi-detail-section {
+    padding: 1.5rem;
+  }
 }

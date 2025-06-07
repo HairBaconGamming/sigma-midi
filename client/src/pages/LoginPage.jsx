@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+// client/src/pages/LoginPage.jsx
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-// import '../assets/css/AuthForm.css'; // Tạo file CSS này
+import { FaUser, FaLock, FaSignInAlt } from 'react-icons/fa';
+import '../assets/css/AuthForm.css';
 
 const LoginPage = () => {
   const [formData, setFormData] = useState({
@@ -9,11 +11,17 @@ const LoginPage = () => {
     password: '',
   });
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // Local loading for form submission
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, isAuthenticated, loading: authLoading } = useAuth(); // authLoading for global auth state
 
   const { username, password } = formData;
+
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      navigate('/'); // Redirect if already logged in and auth state is resolved
+    }
+  }, [isAuthenticated, authLoading, navigate]);
 
   const onChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -28,48 +36,74 @@ const LoginPage = () => {
     setError('');
     try {
       await login(username, password);
-      navigate('/'); // Chuyển hướng đến trang chủ sau khi login thành công
+      // Navigation will be handled by useEffect or can be explicit here
+      // navigate('/');
     } catch (err) {
       setError(err.response?.data?.msg || 'Login failed. Please check your credentials.');
-      console.error("Login error:", err);
+      console.error("Login error:", err.response ? err.response.data : err.message);
     }
     setLoading(false);
   };
 
+  if (authLoading) { // Show loading while checking auth status
+    return (
+      <div className="loading-container">
+        <div className="spinner"></div>
+      </div>
+    );
+  }
+
+
   return (
-    <div className="auth-form-container"> {/* Sử dụng class chung cho form */}
-      <h2>Login</h2>
-      {error && <p className="error-message">{error}</p>}
-      <form onSubmit={onSubmit}>
-        <div className="form-group">
-          <label htmlFor="username">Username</label>
-          <input
-            type="text"
-            name="username"
-            id="username"
-            value={username}
-            onChange={onChange}
-            required
-          />
+    <div className="auth-page-container">
+      <div className="auth-form-card">
+        <div className="auth-form-header">
+          <FaSignInAlt className="auth-form-icon" />
+          <h2>Welcome Back!</h2>
+          <p>Login to access your sigmaMIDI account.</p>
         </div>
-        <div className="form-group">
-          <label htmlFor="password">Password</label>
-          <input
-            type="password"
-            name="password"
-            id="password"
-            value={password}
-            onChange={onChange}
-            required
-          />
-        </div>
-        <button type="submit" className="btn btn-primary" disabled={loading}>
-          {loading ? 'Logging in...' : 'Login'}
-        </button>
-      </form>
-      <p className="auth-switch-link">
-        Don't have an account? <Link to="/register">Register here</Link>
-      </p>
+
+        {error && <p className="error-message-form">{error}</p>}
+
+        <form onSubmit={onSubmit} className="auth-form">
+          <div className="form-group-auth">
+            <FaUser className="input-icon" />
+            <input
+              type="text"
+              name="username"
+              id="username"
+              placeholder="Username"
+              value={username}
+              onChange={onChange}
+              required
+              aria-label="Username"
+            />
+          </div>
+          <div className="form-group-auth">
+            <FaLock className="input-icon" />
+            <input
+              type="password"
+              name="password"
+              id="password"
+              placeholder="Password"
+              value={password}
+              onChange={onChange}
+              required
+              aria-label="Password"
+            />
+          </div>
+          <button type="submit" className="btn-auth btn-submit-auth" disabled={loading}>
+            {loading ? (
+              <>
+                <span className="spinner-btn"></span> Logging in...
+              </>
+            ) : 'Login'}
+          </button>
+        </form>
+        <p className="auth-switch-prompt">
+          Don't have an account? <Link to="/register" className="auth-link">Sign up here</Link>
+        </p>
+      </div>
     </div>
   );
 };

@@ -1,8 +1,8 @@
+// client/src/contexts/AuthContext.jsx
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import api from '../services/api'; // Axios instance
-import { loginUser, registerUser, getAuthUser } from '../services/apiAuth';
-import jwt_decode from 'jwt-decode';
-
+import api from '../services/api';
+import { loginUser as apiLoginUser, registerUser as apiRegisterUser, getAuthUser as apiGetAuthUser } from '../services/apiAuth';
+// import jwt_decode from 'jwt-decode'; // Can be used for client-side token expiration check
 
 const AuthContext = createContext();
 
@@ -14,9 +14,9 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true); // Ban đầu là true để load user
+  const [loading, setLoading] = useState(true);
 
-  const setAuthToken = useCallback((newToken) => {
+  const setAuthTokenHeader = useCallback((newToken) => {
     if (newToken) {
       localStorage.setItem('token', newToken);
       api.defaults.headers.common['x-auth-token'] = newToken;
@@ -28,83 +28,82 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-
   const loadUser = useCallback(async () => {
     const storedToken = localStorage.getItem('token');
     if (storedToken) {
-      setAuthToken(storedToken); // Set header cho các request sau
+      setAuthTokenHeader(storedToken);
       try {
-        // const decoded = jwt_decode(storedToken); // Kiểm tra token hết hạn
+        // Optional: Client-side token expiration check
+        // const decoded = jwt_decode(storedToken);
         // if (decoded.exp * 1000 < Date.now()) {
-        //   logout(); // Token hết hạn
+        //   console.log("Token expired, logging out.");
+        //   logout();
+        //   setLoading(false);
         //   return;
         // }
-        const res = await getAuthUser(); // Gọi API /api/auth/user
+        const res = await apiGetAuthUser();
         setUser(res.data);
         setIsAuthenticated(true);
       } catch (err) {
-        console.error("Error loading user:", err);
-        setAuthToken(null); // Xóa token nếu không hợp lệ
+        console.error("Error loading user:", err.response ? err.response.data : err.message);
+        setAuthTokenHeader(null);
         setUser(null);
         setIsAuthenticated(false);
       }
     }
     setLoading(false);
-  }, [setAuthToken]);
-
+  }, [setAuthTokenHeader]);
 
   useEffect(() => {
     loadUser();
   }, [loadUser]);
 
-
   const login = async (username, password) => {
+    setLoading(true);
     try {
-      const res = await loginUser({ username, password });
-      setAuthToken(res.data.token);
+      const res = await apiLoginUser({ username, password });
+      setAuthTokenHeader(res.data.token);
       setUser(res.data.user);
       setIsAuthenticated(true);
       setLoading(false);
       return res.data;
     } catch (err) {
-      console.error("Login failed in context", err);
       setLoading(false);
       throw err;
     }
   };
 
   const register = async (username, password) => {
+    setLoading(true);
     try {
-      const res = await registerUser({ username, password });
-      setAuthToken(res.data.token);
+      const res = await apiRegisterUser({ username, password });
+      setAuthTokenHeader(res.data.token);
       setUser(res.data.user);
       setIsAuthenticated(true);
       setLoading(false);
       return res.data;
     } catch (err) {
-      console.error("Register failed in context", err);
       setLoading(false);
       throw err;
     }
   };
 
-  const logout = () => {
-    setAuthToken(null);
+  const logout = useCallback(() => {
+    setAuthTokenHeader(null);
     setUser(null);
     setIsAuthenticated(false);
-    setLoading(false);
-  };
+    // No need to set loading here unless there's an async logout process
+  }, [setAuthTokenHeader]);
 
   const value = {
     user,
     token,
     isAuthenticated,
-    loading,
+    loading, // This loading is for the initial user load / auth state determination
     login,
     register,
     logout,
     loadUser,
-    setAuthToken
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
