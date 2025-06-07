@@ -10,7 +10,7 @@ const DATABASE_API_URL = process.env.DATABASE_API_URL;
 // @desc    Register user
 // @access  Public
 router.post('/register', async (req, res) => {
-  const { username, password }_ = req.body;
+  const { username, password } = req.body;
 
   if (!username || !password) {
     return res.status(400).json({ msg: 'Please enter all fields' });
