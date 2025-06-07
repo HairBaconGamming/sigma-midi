@@ -1,0 +1,111 @@
+.homepage-container {
+  padding: 1.5rem 2rem; /* Khoảng đệm chung cho trang */
+  color: #e0e0e0;
+}
+
+.repository-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #333; /* Đường kẻ phân cách */
+}
+
+.repository-header .folder-icon {
+  font-size: 2.5rem; /* Kích thước icon thư mục */
+  margin-right: 1rem;
+  color: #777; /* Màu cho icon thư mục */
+}
+
+.repository-header h2 {
+  font-size: 1.8rem;
+  font-weight: 500; /* Độ đậm vừa phải */
+  margin: 0;
+  color: #d0d0d0;
+}
+
+.controls-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem; /* Khoảng cách giữa các control */
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background-color: #252525; /* Nền tối hơn cho thanh control */
+  border-radius: 6px;
+}
+
+.search-input {
+  flex-grow: 1; /* Cho phép ô tìm kiếm chiếm nhiều không gian hơn */
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  background-color: #333;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  border-radius: 4px;
+  outline: none; /* Bỏ viền focus mặc định */
+  transition: border-color 0.2s ease;
+}
+
+.search-input::placeholder {
+  color: #888;
+}
+
+.search-input:focus {
+  border-color: #009688; /* Màu highlight khi focus */
+}
+
+.sort-select {
+  padding: 0.75rem;
+  font-size: 0.95rem;
+  background-color: #333;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+  min-width: 150px; /* Chiều rộng tối thiểu cho select box */
+}
+
+.sort-select:focus {
+  border-color: #009688;
+}
+
+/* Style cho các option bên trong select (có thể bị giới hạn bởi trình duyệt) */
+.sort-select option {
+  background-color: #333;
+  color: #e0e0e0;
+}
+
+.loading-message,
+.error-message, /* error-message đã có trong AuthForm.css, có thể dùng chung */
+.no-midis-message {
+  text-align: center;
+  font-size: 1.1rem;
+  padding: 2rem;
+  color: #aaa;
+}
+
+.error-message {
+  color: #ff6b6b;
+  background-color: rgba(255, 107, 107, 0.05);
+  border: 1px solid rgba(255, 107, 107, 0.2);
+  border-radius: 4px;
+}
+
+
+/* Responsive adjustments for controls bar */
+@media (max-width: 768px) {
+  .controls-bar {
+    flex-direction: column; /* Xếp chồng các control trên màn hình nhỏ */
+    align-items: stretch; /* Các control chiếm toàn bộ chiều rộng */
+  }
+
+  .search-input,
+  .sort-select {
+    width: 100%; /* Chiếm toàn bộ chiều rộng */
+    margin-bottom: 0.5rem; /* Khoảng cách khi xếp chồng */
+  }
+  .sort-select:last-child {
+    margin-bottom: 0;
+  }
+}

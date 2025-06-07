@@ -1,35 +1,79 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // Thêm useNavigate
 import { useAuth } from '../../contexts/AuthContext';
-import '../../assets/css/Navbar.css'; // Tạo file CSS này
+import '../../assets/css/Navbar.css'; // Đảm bảo đã import CSS
+
+// Placeholder icons (bạn nên thay thế bằng SVG hoặc thư viện icon)
+const MusicNoteIcon = () => <span>🎵</span>;
+const TrophyIcon = () => <span>🏆</span>;
+const ChatIcon = () => <span>💬</span>; // Placeholder cho Discord hoặc forum
+const UploadIcon = () => <span>📤</span>; // Icon cho nút Upload
+const LoginIcon = () => <span>🔑</span>; // Icon cho nút Login/Register
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
+  const navigate = useNavigate(); // Hook để điều hướng
 
-  const authLinks = (
-    <ul>
-      <li><Link to="/upload">Upload MIDI</Link></li>
-      <li><span>Hi, {user && user.username}</span></li>
-      <li><a onClick={logout} href="#!">Logout</a></li>
-    </ul>
-  );
-
-  const guestLinks = (
-    <ul>
-      <li><Link to="/register">Register</Link></li>
-      <li><Link to="/login">Login</Link></li>
-    </ul>
-  );
+  const handleLogout = () => {
+    logout();
+    navigate('/'); // Điều hướng về trang chủ sau khi logout
+  };
 
   return (
     <nav className="navbar">
-      <h1><Link to="/">nanoMIDI</Link></h1>
-      {isAuthenticated ? authLinks : guestLinks}
-      {/* Thêm các icon như trong screenshot */}
-      <div className="nav-icons">
-        {/* Placeholder for icons */}
-        <span>🎵</span> <span>🏆</span> <span>💬</span>
-        {isAuthenticated && <Link to="/profile" className="profile-icon-placeholder">👤</Link>}
+      <div className="navbar-brand">
+        <Link to="/">nanoMIDI</Link>
+      </div>
+
+      <div className="navbar-center">
+        {/* Có thể thêm các link điều hướng chính ở đây nếu cần */}
+        {/* Ví dụ: <Link to="/browse">Browse</Link> */}
+      </div>
+
+      <div className="navbar-right">
+        <ul>
+          <li>
+            <a href="https://your-music-platform-link.com" target="_blank" rel="noopener noreferrer" title="Music Platform">
+              <MusicNoteIcon />
+            </a>
+          </li>
+          <li>
+            <Link to="/leaderboard" title="Leaderboard"> {/* Giả sử có trang leaderboard */}
+              <TrophyIcon />
+            </Link>
+          </li>
+          <li>
+            <a href="https://your-discord-link.com" target="_blank" rel="noopener noreferrer" title="Discord Community">
+              <ChatIcon />
+            </a>
+          </li>
+          {isAuthenticated ? (
+            <>
+              <li>
+                <Link to="/upload" className="btn btn-upload" title="Upload MIDI">
+                  <UploadIcon /> {/* Hoặc <UploadIcon /> Upload */}
+                </Link>
+              </li>
+              <li className="nav-user-info">
+                {/* Có thể thêm avatar ở đây */}
+                <span>Hi, {user?.username}</span>
+              </li>
+              <li>
+                <button onClick={handleLogout} className="btn btn-logout" title="Logout">
+                  Logout
+                </button>
+              </li>
+            </>
+          ) : (
+            <>
+              <li>
+                <Link to="/login" className="btn btn-login-register" title="Login or Register">
+                  <LoginIcon /> {/* Hoặc Login/Register */}
+                </Link>
+              </li>
+            </>
+          )}
+        </ul>
       </div>
     </nav>
   );
