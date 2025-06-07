@@ -48,7 +48,7 @@
   margin-bottom: var(--spacing-xl);
   padding-bottom: var(--spacing-xl);
   border-bottom: 1px solid var(--color-border);
-  animation: fadeInItem 0.5s 0.1s ease-out forwards; opacity: 0;
+  animation: fadeInItem 0.5s 0.1s ease-out forwards;
 }
 
 .header-thumbnail-container {
@@ -128,7 +128,7 @@
   padding: var(--spacing-lg) 0;
   margin-bottom: var(--spacing-xl);
   border-bottom: 1px solid var(--color-border);
-  animation: fadeInItem 0.5s 0.2s ease-out forwards; opacity: 0;
+  animation: fadeInItem 0.5s 0.2s ease-out forwards;
 }
 
 .btn-detail-action {
@@ -199,7 +199,7 @@
   align-items: center;
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-inner);
-  animation: fadeInItem 0.5s 0.3s ease-out forwards; opacity: 0;
+  animation: fadeInItem 0.5s 0.3s ease-out forwards;
 }
 .midi-player-visualizer-placeholder p {
   margin-bottom: var(--spacing-sm);
@@ -259,7 +259,7 @@
   margin-bottom: var(--spacing-xl);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-md);
-  animation: fadeInItem 0.5s 0.4s ease-out forwards; opacity: 0; /* Stagger animation */
+  animation: fadeInItem 0.5s 0.4s ease-out forwards;/* Stagger animation */
 }
 .midi-detail-section:last-child {
     margin-bottom: 0; /* No bottom margin for the last section */

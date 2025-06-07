@@ -134,7 +134,7 @@ const MidiDetailPage = () => {
   if (error) return <p className="error-message-page">{error}</p>;
   if (!midi) return <p className="no-results-message-page">MIDI not found.</p>;
 
-  const thumbnailUrl = midi.thumbnail_url || `/api/midis/placeholder-thumbnail/${midi.id % 10 + 1}.png`;
+  const thumbnailUrl = midi.thumbnail_url || `https://upload.wikimedia.org/wikipedia/commons/a/a0/MIDI_LOGO.svg`;
 
 
   return (
