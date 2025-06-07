@@ -2,7 +2,7 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { uploadMidiFile } from '../services/apiMidis';
-import { FaFileUpload, FaMusic, FaUser, FaInfoCircle, FaTachometerAlt, FaTimesCircle, FaUserEdit } from 'react-icons/fa';
+import { FaFileUpload, FaMusic, FaUser, FaInfoCircle, FaTachometerAlt, FaTimesCircle, FaUserEdit, FaUpload } from 'react-icons/fa';
 import { useDropzone } from 'react-dropzone';
 import '../assets/css/UploadPage.css';
 

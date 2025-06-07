@@ -198,7 +198,13 @@
 }
 
 .dropdown-menu {
-  display: none;
+  display: block; /* Luôn là block */
+  opacity: 0;
+  visibility: hidden; /* Ẩn khỏi DOM và screen readers */
+  transform: translateY(-10px) scale(0.95); /* Trạng thái ẩn */
+  transition: opacity var(--transition-duration) var(--transition-timing-function),
+              visibility 0s var(--transition-duration) var(--transition-timing-function), /* Ẩn ngay khi opacity là 0 */
+              transform var(--transition-duration) var(--transition-timing-function);
   position: absolute;
   top: calc(100% + var(--spacing-sm)); /* Space from navbar */
   right: 0;
@@ -220,7 +226,10 @@
 
 .nav-user-dropdown:hover .dropdown-menu,
 .nav-user-dropdown:focus-within .dropdown-menu {
-  display: block;
+  opacity: 1;
+  visibility: visible; /* Hiển thị lại */
+  transform: translateY(0) scale(1); /* Trạng thái hiển thị */
+  transition-delay: 0s, 0s, 0s; /* Bỏ delay khi hiển thị */
 }
 
 .dropdown-menu li a,
@@ -369,8 +378,7 @@
       display: inline; /* Show username in mobile menu */
   }
   .dropdown-menu { /* Full width dropdown on mobile */
-    display: none; /* Hidden by default */
-    position: absolute;
+    position: static;
     box-shadow: none;
     border: none;
     border-top: 1px solid var(--color-border);
@@ -378,13 +386,7 @@
     border-radius: 0;
     animation: none; /* No animation for static display */
     padding: 0;
-    animation: dropdownFadeInScaleUp 0.2s var(--transition-timing-function) forwards;
-    transform-origin: top right;
   }
-  .nav-user-dropdown:hover .dropdown-menu,
-.nav-user-dropdown:focus-within .dropdown-menu { /* Show on hover or focus within */
-  display: block;
-}
   .dropdown-menu li a,
   .dropdown-menu li button {
     padding: var(--spacing-md) var(--spacing-lg);

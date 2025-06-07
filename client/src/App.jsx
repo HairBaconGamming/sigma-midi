@@ -8,6 +8,8 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import UploadPage from './pages/UploadPage';
 import MidiDetailPage from './pages/MidiDetailPage';
+import MyProfilePage from './pages/MyProfilePage'; // Import mới
+import MyMidisPage from './pages/MyMidisPage';   // Import mới
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import './assets/css/App.css';
 import Footer from './components/layout/Footer'; // Import Footer
@@ -59,11 +61,26 @@ function AppContent() {
               </PrivateRoute>
             }
           />
-          {/* Add a catch-all for 404 if desired */}
+          <Route /* NEW */
+            path="/profile" // Hoặc /profile/:username nếu muốn xem profile người khác
+            element={
+              <PrivateRoute>
+                <MyProfilePage />
+              </PrivateRoute>
+            }
+          />
+          <Route /* NEW */
+            path="/my-midis"
+            element={
+              <PrivateRoute>
+                <MyMidisPage />
+              </PrivateRoute>
+            }
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      <Footer /> {/* Add Footer */}
+      <Footer />
     </>
   );
 }

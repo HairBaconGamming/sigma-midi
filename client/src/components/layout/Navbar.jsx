@@ -55,11 +55,6 @@ const Navbar = () => {
                 <FaTrophy /> <span className="nav-icon-text">Scores</span>
               </Link>
             </li>
-            <li>
-              <a href="https://discord.gg/yourinvite" target="_blank" rel="noopener noreferrer" title="Discord Community" onClick={closeMobileMenu}>
-                <FaDiscord /> <span className="nav-icon-text">Community</span>
-              </a>
-            </li>
             {isAuthenticated ? (
               <>
                 <li>
@@ -72,10 +67,10 @@ const Navbar = () => {
                     <FaUserCircle className="user-avatar-icon" />
                     <span className="user-name">{user?.username}</span>
                   </div>
-                  <ul className="dropdown-menu">
-                    <li><Link to="/profile" onClick={closeMobileMenu}>My Profile</Link></li>
-                    <li><Link to="/my-midis" onClick={closeMobileMenu}>My MIDIs</Link></li>
-                    <li><button onClick={handleLogout} className="btn-dropdown-logout">
+                   <ul className={`dropdown-menu ${isUserDropdownOpen ? 'show' : ''}`}>
+                    <li><Link to="/profile" onClick={() => { closeMobileMenu(); setIsUserDropdownOpen(false); }}>My Profile</Link></li>
+                    <li><Link to="/my-midis" onClick={() => { closeMobileMenu(); setIsUserDropdownOpen(false); }}>My MIDIs</Link></li>
+                    <li><button onClick={() => { handleLogout(); setIsUserDropdownOpen(false); }} className="btn-dropdown-logout">
                         <FaSignOutAlt /> Logout
                     </button></li>
                   </ul>
