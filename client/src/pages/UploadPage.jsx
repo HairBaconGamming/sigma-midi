@@ -2,7 +2,7 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { uploadMidiFile } from '../services/apiMidis';
-import { FaFileUpload, FaMusic, FaUser, FaInfoCircle, FaTachometerAlt, FaTimesCircle, FaTags, FaGuitar, FaStopwatch, FaStarHalfAlt, FaClipboardList, FaCheckCircle, FaGlobe } from 'react-icons/fa';
+import { FaFileUpload, FaMusic, FaUser, FaInfoCircle, FaTachometerAlt, FaTimesCircle, FaTags, FaGuitar, FaStopwatch, FaStarHalfAlt, FaClipboardList, FaCheckCircle, FaGlobe, FaUserEdit } from 'react-icons/fa';
 import { useDropzone } from 'react-dropzone';
 import '../assets/css/UploadPage.css'; // Ensure this CSS file is created and styled
 

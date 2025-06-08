@@ -10,6 +10,7 @@ import UploadPage from './pages/UploadPage';
 import MidiDetailPage from './pages/MidiDetailPage';
 import MyProfilePage from './pages/MyProfilePage'; // Import mới
 import MyMidisPage from './pages/MyMidisPage';   // Import mới
+import LeaderboardPage from './pages/LeaderboardPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import './assets/css/App.css';
 import Footer from './components/layout/Footer'; // Import Footer
@@ -77,6 +78,7 @@ function AppContent() {
               </PrivateRoute>
             }
           />
+          <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
