@@ -1,6 +1,6 @@
 // client/src/pages/DesktopAppPage.jsx
 import React from 'react';
-import { FaDesktop, FaWindows, FaDownload, FaGithub } from 'react-icons/fa';
+import { FaDesktop, FaWindows, FaDownload, FaGithub, FaStarHalfAlt } from 'react-icons/fa';
 import '../assets/css/DesktopAppPage.css'; // We'll create this CSS file
 
 const DesktopAppPage = () => {
@@ -72,7 +72,7 @@ const DesktopAppPage = () => {
               The desktop player is open source! You can find the source code, report issues, or contribute to its development on GitHub.
           </p>
           <a 
-            href="https://drive.google.com/uc?export=download&id=1SRRieQ__B4Mu8vNJrit9J0yD-OTBBcGN" // Replace with actual link
+            href="https://github.com/HairBaconGamming/sigmaMIDIs" // Replace with actual link
             className="btn btn-outline btn-github-app"
             target="_blank"
             rel="noopener noreferrer"
