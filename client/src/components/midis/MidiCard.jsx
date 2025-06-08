@@ -1,7 +1,7 @@
 // client/src/components/midis/MidiCard.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { trackMidiDownload } from '../../services/apiMidis';
+import { trackMidiDownload, getMidiFileStreamUrl } from '../../services/apiMidis'; // Import getMidiFileStreamUrl
 import { FaEye, FaDownload, FaCalendarAlt, FaUserEdit, FaMusic, FaTachometerAlt } from 'react-icons/fa';
 import '../../assets/css/MidiCard.css';
 
@@ -17,19 +17,23 @@ const formatDate = (dateString) => {
 
 const MidiCard = ({ midi }) => {
   const handleDownload = async (e) => {
-    e.preventDefault(); // Prevent navigation if card itself is a link
+    e.preventDefault();
     e.stopPropagation();
 
-    if (!midi || !midi.file_path) {
-      alert("MIDI file path not available.");
+    if (!midi || !midi.fileId) { // MODIFIED: Check for fileId
+      alert("MIDI file information not available for download.");
       return;
     }
     try {
-      await trackMidiDownload(midi.id);
-      const downloadUrl = `${window.location.origin}${midi.file_path}`;
+      await trackMidiDownload(midi._id); // Track download using MIDI document _id
+      
+      // MODIFIED: Get stream URL using fileId
+      const downloadUrl = getMidiFileStreamUrl(midi.fileId);
+
       const link = document.createElement('a');
       link.href = downloadUrl;
-      link.setAttribute('download', midi.original_filename || `midi_${midi.id}.mid`);
+      // original_filename is now directly on the midi object from backend
+      link.setAttribute('download', midi.original_filename || `midi_${midi._id}.mid`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -39,14 +43,14 @@ const MidiCard = ({ midi }) => {
     }
   };
 
-  // Placeholder for thumbnail - replace with actual logic if you have thumbnails
-  const thumbnailUrl = midi.thumbnail_url || `https://upload.wikimedia.org/wikipedia/commons/a/a0/MIDI_LOGO.svg`; // Example dynamic placeholder
+  // Assuming backend provides a direct thumbnail_url or a placeholder mechanism
+  const thumbnailUrl = midi.thumbnail_url || `/api/midis/placeholder-thumbnail/${(parseInt(midi._id.slice(-2), 16) % 10) + 1}.png`;
+
 
   return (
     <div className="midi-card">
-      <Link to={`/midi/${midi.id}`} className="card-link-wrapper">
+      <Link to={`/midi/${midi._id}`} className="card-link-wrapper"> {/* MODIFIED: Use _id */}
         <div className="midi-card-thumbnail-container">
-          {/* In a real app, you'd have a dynamic thumbnail */}
           <img src={thumbnailUrl} alt={`${midi.title} thumbnail`} className="midi-card-thumbnail" />
           <div className="thumbnail-overlay">
             <span className="play-icon-overlay">▶</span>
@@ -66,7 +70,8 @@ const MidiCard = ({ midi }) => {
           )}
           <div className="midi-card-details">
             <span><FaTachometerAlt className="icon" /> {midi.bpm ? `${midi.bpm} BPM` : 'N/A BPM'}</span>
-            <span>{midi.size_kb} KB</span>
+            {/* MODIFIED: Use size_bytes and format it */}
+            <span>{midi.size_bytes ? `${(midi.size_bytes / 1024).toFixed(1)} KB` : 'N/A KB'}</span>
           </div>
         </div>
       </Link>
@@ -80,7 +85,7 @@ const MidiCard = ({ midi }) => {
           <button onClick={handleDownload} className="btn-card btn-download-card" title="Download MIDI">
             <FaDownload />
           </button>
-          <Link to={`/midi/${midi.id}`} className="btn-card btn-view-card" title="View Details">
+          <Link to={`/midi/${midi._id}`} className="btn-card btn-view-card" title="View Details"> {/* MODIFIED: Use _id */}
             View
           </Link>
         </div>

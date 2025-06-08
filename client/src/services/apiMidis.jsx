@@ -1,38 +1,41 @@
 // client/src/services/apiMidis.js
 import api from './api';
 
-// params can include { sortBy, order, search, page, limit, genre, difficulty, uploaderId }
+// params can include { sortBy, order, search, page, limit, uploaderId, genre, difficulty }
 export const getAllMidis = (params) => api.get('/midis', { params });
 
 export const getMidiById = (id) => api.get(`/midis/${id}`);
 
-export const uploadMidiFile = (formData) => {
-  // Token should be automatically included by the api instance if set in AuthContext
+export const uploadMidiFile = (formData, onUploadProgress) => {
   return api.post('/midis/upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
-    // Optional: for upload progress
-    // onUploadProgress: progressEvent => {
-    //   const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-    //   console.log(percentCompleted);
-    //   // You can dispatch an action or call a callback here to update UI
-    // }
+    onUploadProgress // Pass a callback for progress tracking
   });
 };
 
-// This endpoint on the backend increments the download count
+// Tracks the download and returns info. Actual download is via /api/files/stream/:fileId
 export const trackMidiDownload = (id) => api.get(`/midis/download-track/${id}`);
 
-// NEW: Function to get the actual streamable/downloadable URL for a MIDI file
-// The `fileId` comes from the `midi.fileId` property of a MIDI object fetched from `/api/midis`
-export const getMidiFileUrl = (fileId) => {
-  if (!fileId) return null;
-  // Assuming your Express app serves static files from '/api' prefix for API routes
-  // and the file streaming route is '/api/files/stream/:fileId'
-  return `/api/files/stream/${fileId}`; // This URL will be used in <audio> or download links
+// NEW: Function to get the direct stream URL for a MIDI file
+// fileId is the _id of the file in GridFS (stored as midi.fileId in Midi model)
+export const getMidiFileStreamUrl = (fileId) => {
+  // Assuming your api instance is configured with the correct baseURL for the backend
+  // If api.defaults.baseURL is '/api', this will construct a relative URL.
+  // If your backend is on a different domain, ensure baseURL is set correctly or use absolute URL.
+  return `${api.defaults.baseURL || ''}/files/stream/${fileId}`;
 };
 
 
-// If you implement delete functionality
-// export const deleteMidiById = (id) => api.delete(`/midis/${id}`);
+// If you implement delete/update functionality for users on their own MIDIs
+export const updateMidiDetails = (id, midiData) => api.put(`/midis/${id}`, midiData);
+export const deleteMidiById = (id) => api.delete(`/midis/${id}`);
+
+// Placeholder for fetching user's MIDIs (can use getAllMidis with uploaderId param)
+export const getMyMidis = (uploaderId, params) => {
+    return getAllMidis({ ...params, uploaderId });
+};
+
+// Placeholder for fetching user profile (public view)
+export const getUserPublicProfile = (userId) => api.get(`/auth/profile/${userId}`);
