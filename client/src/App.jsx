@@ -10,6 +10,7 @@ import UploadPage from './pages/UploadPage';
 import MidiDetailPage from './pages/MidiDetailPage';
 import MyProfilePage from './pages/MyProfilePage'; // Import mới
 import MyMidisPage from './pages/MyMidisPage';   // Import mới
+import UserProfilePage from './pages/UserProfilePage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import './assets/css/App.css';
@@ -79,6 +80,7 @@ function AppContent() {
             }
           />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/profile/:userId" element={<UserProfilePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
