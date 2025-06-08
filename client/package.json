@@ -16,7 +16,9 @@
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.3.0",
     "react-icons": "^5.5.0",
-    "react-dropzone": "^14.3.8"
+    "react-dropzone": "^14.3.8",
+    "tone": "^15.2.6",
+    "@tonejs/midi": "^2.0.28"
   },
   "devDependencies": {
     "@types/react": "^18.0.27", 

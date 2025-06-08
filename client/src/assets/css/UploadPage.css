@@ -288,6 +288,122 @@
   border-top-color: #fff;
 }
 
+.analyzing-indicator {
+  font-size: 0.8em;
+  color: var(--color-text-dark);
+  font-style: italic;
+  margin-left: var(--spacing-sm);
+}
+
+.form-section h4 .spinner-btn { /* Spinner bên cạnh tiêu đề section metadata */
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+  vertical-align: middle;
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  margin-top: var(--spacing-md); /* Khoảng cách với các trường khác */
+  padding: var(--spacing-sm) 0; /* Thêm chút padding */
+}
+
+.custom-checkbox {
+  /* Ẩn checkbox gốc */
+  opacity: 0;
+  position: absolute;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.checkbox-label-text {
+  font-size: 0.95rem;
+  color: var(--color-text-medium);
+  font-weight: 500;
+  display: inline-flex; /* Để icon và text thẳng hàng */
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+  padding-left: 32px; /* Không gian cho custom checkbox */
+  user-select: none; /* Ngăn chọn text khi click */
+  transition: color var(--transition-fast);
+}
+.checkbox-label-text:hover {
+    color: var(--color-text-light);
+}
+
+
+/* Custom checkbox box */
+.checkbox-label-text::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  background-color: var(--color-background-input);
+  border: 2px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+  box-shadow: var(--shadow-inner);
+}
+
+/* Custom checkbox checkmark (sử dụng pseudo-element ::after) */
+.checkbox-label-text::after {
+  content: "";
+  position: absolute;
+  left: 7px; /* Căn chỉnh checkmark */
+  top: 50%;
+  transform: translateY(-50%) rotate(45deg) scale(0); /* Ẩn và xoay ban đầu */
+  width: 6px;
+  height: 12px;
+  border: solid var(--color-background-dark); /* Màu checkmark (đậm trên nền sáng) */
+  border-width: 0 2.5px 2.5px 0;
+  transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Animation nảy nhẹ */
+}
+
+/* Styles khi checkbox được chọn */
+.custom-checkbox:checked + .checkbox-label-text::before {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary-hover);
+}
+
+.custom-checkbox:checked + .checkbox-label-text::after {
+  transform: translateY(-50%) rotate(45deg) scale(1); /* Hiển thị checkmark */
+}
+
+/* Focus style cho accessibility */
+.custom-checkbox:focus-visible + .checkbox-label-text::before {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px var(--color-primary-light); /* Focus ring */
+}
+
+/* Icon bên trong label (nếu có) */
+.checkbox-label-text .label-icon {
+  margin-right: var(--spacing-sm);
+  color: var(--color-text-dark); /* Màu icon mặc định */
+  font-size: 1.1em; /* Kích thước icon so với text */
+  transition: color var(--transition-fast);
+}
+.custom-checkbox:checked + .checkbox-label-text .label-icon {
+    color: var(--color-primary); /* Màu icon khi được chọn */
+}
+.checkbox-label-text:hover .label-icon {
+    color: var(--color-text-light);
+}
+.custom-checkbox:checked + .checkbox-label-text:hover .label-icon {
+    color: var(--color-primary-hover);
+}
+
 @media (max-width: 768px) {
   .upload-page-container {
     padding: var(--spacing-lg) var(--spacing-md);

@@ -1,10 +1,15 @@
 // client/src/pages/UploadPage.jsx
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { uploadMidiFile } from '../services/apiMidis';
-import { FaFileUpload, FaMusic, FaUser, FaInfoCircle, FaTachometerAlt, FaTimesCircle, FaTags, FaGuitar, FaStopwatch, FaStarHalfAlt, FaClipboardList, FaCheckCircle, FaGlobe, FaUserEdit, FaUpload } from 'react-icons/fa';
+import {
+  FaFileUpload, FaMusic, FaUser, FaInfoCircle, FaTachometerAlt, FaTimesCircle,
+  FaTags, FaGuitar, FaStopwatch, FaStarHalfAlt, FaClipboardList, FaCheckCircle,
+  FaGlobe, FaSignature, FaClock, FaImage, FaUserEdit, FaUpload
+} from 'react-icons/fa';
 import { useDropzone } from 'react-dropzone';
-import '../assets/css/UploadPage.css'; // Ensure this CSS file is created and styled
+import { Midi as ToneMidi } from '@tonejs/midi';
+import '../assets/css/UploadPage.css';
 
 const UploadPage = () => {
   const [file, setFile] = useState(null);
@@ -25,22 +30,102 @@ const UploadPage = () => {
   const [bpm, setBpm] = useState('');
   const [is_public, setIsPublic] = useState(true);
   const [thumbnail_url, setThumbnailUrl] = useState('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // For form submission loading state
   const [uploadProgress, setUploadProgress] = useState(0);
   const navigate = useNavigate();
+
+  const resetSomeMetadataFields = useCallback(() => {
+    // Don't reset title if user typed it, but reset if it was auto-filled from previous file
+    // For simplicity, we can reset fields that are most likely auto-filled
+    // setArtist(''); // Keep if user typed
+    // setDescription(''); // Keep
+    setGenre('');
+    // setTags(''); // Keep
+    setDurationSeconds('');
+    setKeySignature('');
+    setTimeSignature('');
+    // setDifficulty(''); // Keep
+    setInstrumentation('');
+    // setArrangementBy(''); // Keep
+    setBpm('');
+    // setThumbnailUrl(''); // Keep
+  }, []);
+
+
+  const analyzeMidiFile = useCallback(async (midiFile) => {
+    if (!midiFile) return;
+    setIsAnalyzing(true);
+    setError('');
+    try {
+      const arrayBuffer = await midiFile.arrayBuffer();
+      const toneMidi = new ToneMidi(arrayBuffer);
+
+      if (toneMidi.header.tempos && toneMidi.header.tempos.length > 0) {
+        setBpm(Math.round(toneMidi.header.tempos[0].bpm).toString());
+      } else {
+        setBpm('');
+      }
+
+      setDurationSeconds(Math.round(toneMidi.duration).toString());
+
+      if (toneMidi.header.timeSignatures && toneMidi.header.timeSignatures.length > 0) {
+        const ts = toneMidi.header.timeSignatures[0];
+        setTimeSignature(`${ts.timeSignature[0]}/${ts.timeSignature[1]}`);
+      } else {
+        setTimeSignature('');
+      }
+
+      if (toneMidi.header.keySignatures && toneMidi.header.keySignatures.length > 0) {
+        const ks = toneMidi.header.keySignatures[0];
+        // Tone.js might return key like "C#", scale "major" or "minor"
+        let keyName = ks.key;
+        if (ks.scale === "major") keyName += " Major";
+        else if (ks.scale === "minor") keyName += " minor";
+        setKeySignature(keyName);
+      } else {
+        setKeySignature('');
+      }
+
+      let instruments = new Set(); // Use Set to avoid duplicates
+      toneMidi.tracks.forEach(track => {
+        if (track.instrument && track.instrument.name && track.instrument.name.trim() !== "") {
+            instruments.add(track.instrument.name.trim());
+        } else if (track.name && track.name.trim() !== "") {
+            instruments.add(track.name.trim());
+        }
+      });
+      if (instruments.size > 0) {
+        setInstrumentation(Array.from(instruments).slice(0, 3).join(', '));
+      } else {
+        setInstrumentation('');
+      }
+
+      if (!title.trim() && midiFile.name) {
+        let suggestedTitle = midiFile.name.replace(/\.(mid|midi)$/i, '').replace(/[_-]/g, ' ');
+        suggestedTitle = suggestedTitle.replace(/\b\w/g, l => l.toUpperCase()); // Capitalize each word
+        setTitle(suggestedTitle);
+      }
+
+    } catch (err) {
+      console.error("Error analyzing MIDI file:", err);
+      setError("Could not automatically analyze MIDI. Please fill details manually.");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [title]); // Add title to dependencies for the auto-fill logic
 
   const onDrop = useCallback(acceptedFiles => {
     if (acceptedFiles && acceptedFiles.length > 0) {
       const selectedFile = acceptedFiles[0];
-      // More robust MIME type check and extension check
       const allowedMimeTypes = ['audio/midi', 'audio/mid', 'application/x-midi'];
       const allowedExtensions = ['.mid', '.midi'];
       const fileExtension = selectedFile.name.slice(selectedFile.name.lastIndexOf('.')).toLowerCase();
 
-      if (allowedMimeTypes.includes(selectedFile.type) || allowedExtensions.includes(fileExtension)) {
+      if (allowedMimeTypes.includes(selectedFile.type.toLowerCase()) || allowedExtensions.includes(fileExtension)) {
         if (selectedFile.size > 15 * 1024 * 1024) { // 15MB limit
             setError('File is too large. Maximum size is 15MB.');
             setFile(null);
@@ -50,23 +135,27 @@ const UploadPage = () => {
         setFile(selectedFile);
         setPreviewFileName(selectedFile.name);
         setError('');
+        resetSomeMetadataFields();
+        analyzeMidiFile(selectedFile);
       } else {
         setError('Invalid file type. Please upload a .mid or .midi file.');
         setFile(null);
         setPreviewFileName('');
       }
     }
-  }, []);
+  }, [analyzeMidiFile, resetSomeMetadataFields]);
 
-  const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive, isDragReject, open } = useDropzone({
     onDrop,
     accept: {
         'audio/midi': ['.mid', '.midi'],
-        'audio/mid': ['.mid', '.midi'], // Some systems might use this
+        'audio/mid': ['.mid', '.midi'],
         'application/x-midi': ['.mid', '.midi']
     },
     multiple: false,
-    maxSize: 15 * 1024 * 1024, // 15MB
+    noClick: true, // Disable click to open dialog if file is already selected
+    noKeyboard: true,
+    maxSize: 15 * 1024 * 1024,
     onDropRejected: (rejectedFiles) => {
         if (rejectedFiles && rejectedFiles.length > 0) {
             const firstError = rejectedFiles[0].errors[0];
@@ -84,21 +173,23 @@ const UploadPage = () => {
   const removeFile = () => {
     setFile(null);
     setPreviewFileName('');
-    if (document.getElementById('midiFile')) { // Reset file input if it exists
-        document.getElementById('midiFile').value = null;
+    resetSomeMetadataFields();
+    // Reset the actual file input if you have one (not directly used by dropzone's getInputProps)
+    const fileInput = document.getElementById('midiFileManual');
+    if (fileInput) fileInput.value = null;
+  };
+
+  const handleManualFileSelect = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+        onDrop([e.target.files[0]]); // Use the onDrop logic for consistency
     }
   };
 
+
   const onSubmit = async (e) => {
     e.preventDefault();
-    if (!file) {
-      setError('Please select or drop a MIDI file to upload.');
-      return;
-    }
-    if (!title.trim()) {
-      setError('Title is required.');
-      return;
-    }
+    if (!file) { setError('Please select or drop a MIDI file to upload.'); return; }
+    if (!title.trim()) { setError('Title is required.'); return; }
 
     const formDataPayload = new FormData();
     formDataPayload.append('midiFile', file);
@@ -106,7 +197,7 @@ const UploadPage = () => {
     formDataPayload.append('artist', artist.trim());
     formDataPayload.append('description', description.trim());
     formDataPayload.append('genre', genre.trim());
-    formDataPayload.append('tags', tags.trim()); // Backend will split by comma
+    formDataPayload.append('tags', tags.trim());
     if (duration_seconds) formDataPayload.append('duration_seconds', parseInt(duration_seconds, 10));
     formDataPayload.append('key_signature', key_signature.trim());
     formDataPayload.append('time_signature', time_signature.trim());
@@ -128,19 +219,18 @@ const UploadPage = () => {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
             setUploadProgress(percentCompleted);
         } else {
-            // Indeterminate progress if total is not available
-            setUploadProgress(50); // Or some other visual cue
+            setUploadProgress(50); // Indeterminate
         }
       });
       setSuccess(res.data.msg || 'MIDI uploaded successfully!');
-      setUploadProgress(100); // Ensure it hits 100 on success
+      setUploadProgress(100);
       setTimeout(() => {
         if (res.data.midi && res.data.midi._id) {
             navigate(`/midi/${res.data.midi._id}`);
         } else {
-            navigate('/'); // Fallback
+            navigate('/');
         }
-      }, 1200); // Shorter delay
+      }, 1200);
 
     } catch (err) {
       setError(err.response?.data?.msg || err.message || 'Upload failed. Please try again.');
@@ -165,15 +255,18 @@ const UploadPage = () => {
 
         <form onSubmit={onSubmit} className="upload-form-content">
           <div className="form-section dropzone-section">
-            <h4><FaMusic className="icon"/> MIDI File</h4>
+            <h4><FaMusic className="icon"/> MIDI File {isAnalyzing && <span className="analyzing-indicator">(Analyzing...)</span>}</h4>
             <div {...getRootProps()} className={`dropzone ${isDragActive ? 'active' : ''} ${isDragReject ? 'reject' : ''}`}>
-              <input {...getInputProps()} id="midiFile" /> {/* Added id for potential reset */}
+              <input {...getInputProps()} /> {/* This input is hidden by react-dropzone */}
               <FaFileUpload className="dropzone-icon" />
               {isDragActive && !isDragReject && <p>Drop the MIDI file here ...</p>}
-              {!isDragActive && !previewFileName && <p>Drag 'n' drop a MIDI file here, or click to select</p>}
-              {isDragReject && <p style={{color: 'var(--color-error)'}}>Invalid file type!</p>}
+              {!isDragActive && !previewFileName && !file && <p>Drag 'n' drop a MIDI file here, or <button type="button" onClick={open} className="btn-link-style">click to select</button></p>}
+              {isDragReject && <p style={{color: 'var(--color-error)'}}>Invalid file type or size!</p>}
+              {!isDragActive && (file || previewFileName) && !isDragReject && <p>File selected. Drag another or <button type="button" onClick={open} className="btn-link-style">choose different</button>.</p>}
               <p className="dropzone-hint">(.mid, .midi files only, max 15MB)</p>
             </div>
+            {/* Manual file input as fallback or alternative, hidden if dropzone is primary */}
+            {/* <input type="file" id="midiFileManual" onChange={handleManualFileSelect} accept=".mid,.midi" style={{display: 'none'}} /> */}
             {previewFileName && (
               <div className="file-preview">
                 <FaMusic className="file-icon-preview" />
@@ -186,7 +279,7 @@ const UploadPage = () => {
           </div>
 
           <div className="form-section metadata-section">
-            <h4><FaClipboardList className="icon"/> MIDI Information</h4>
+            <h4><FaClipboardList className="icon"/> MIDI Information {isAnalyzing && <span className="spinner-btn" style={{marginLeft: '10px'}}></span>}</h4>
             <div className="form-grid">
               <div className="form-group-upload">
                 <label htmlFor="title"><FaInfoCircle className="label-icon" /> Title *</label>
@@ -205,11 +298,11 @@ const UploadPage = () => {
                 <input type="number" id="bpm" value={bpm} onChange={(e) => setBpm(e.target.value)} min="0" placeholder="e.g., 120"/>
               </div>
               <div className="form-group-upload">
-                <label htmlFor="key_signature">Key Signature</label>
+                <label htmlFor="key_signature"><FaSignature className="label-icon" /> Key Signature</label>
                 <input type="text" id="key_signature" value={key_signature} onChange={(e) => setKeySignature(e.target.value)} placeholder="e.g., C Major, A minor"/>
               </div>
               <div className="form-group-upload">
-                <label htmlFor="time_signature">Time Signature</label>
+                <label htmlFor="time_signature"><FaClock className="label-icon" /> Time Signature</label>
                 <input type="text" id="time_signature" value={time_signature} onChange={(e) => setTimeSignature(e.target.value)} placeholder="e.g., 4/4, 3/4"/>
               </div>
                <div className="form-group-upload">
@@ -233,13 +326,20 @@ const UploadPage = () => {
                 <input type="text" id="tags" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="e.g., epic, cinematic, lofi, tutorial, cover" />
               </div>
               <div className="form-group-upload full-width-group">
-                <label htmlFor="thumbnail_url">Thumbnail URL (optional)</label>
+                <label htmlFor="thumbnail_url"><FaImage className="label-icon"/> Thumbnail URL (optional)</label>
                 <input type="url" id="thumbnail_url" value={thumbnail_url} onChange={(e) => setThumbnailUrl(e.target.value)} placeholder="https://example.com/image.png"/>
               </div>
             </div>
             <div className="form-group-upload full-width-group checkbox-group">
-                <input type="checkbox" id="is_public" name="is_public" checked={is_public} onChange={(e) => setIsPublic(e.target.checked)} className="custom-checkbox"/>
-                <label htmlFor="is_public" className="checkbox-label-text">
+                <input
+                    type="checkbox"
+                    id="is_public"
+                    name="is_public"
+                    checked={is_public}
+                    onChange={(e) => setIsPublic(e.target.checked)}
+                    className="custom-checkbox" // Class này để ẩn checkbox gốc
+                />
+                <label htmlFor="is_public" className="checkbox-label-text"> {/* Label này sẽ tạo custom checkbox */}
                     <FaGlobe className="label-icon"/> Make this MIDI public (visible to everyone)
                 </label>
             </div>
@@ -252,19 +352,16 @@ const UploadPage = () => {
           {loading && (
             <div className="upload-progress-container">
               <div className="progress-bar-upload" style={{ width: `${uploadProgress}%` }} role="progressbar" aria-valuenow={uploadProgress} aria-valuemin="0" aria-valuemax="100">
-                {uploadProgress > 5 && `${uploadProgress}%`} {/* Show percentage when bar is visible enough */}
+                {uploadProgress > 5 && `${uploadProgress}%`}
               </div>
             </div>
           )}
 
-          <button type="submit" className="btn-upload-submit" disabled={loading || !file}>
-            {loading ? (
-              <>
-                <span className="spinner-btn-upload"></span> Uploading...
-              </>
-            ) : (
-              <><FaUpload /> Upload MIDI</>
-            )}
+          <button type="submit" className="btn-upload-submit" disabled={loading || !file || isAnalyzing}>
+            {loading ? ( <><span className="spinner-btn-upload"></span> Uploading...</> )
+             : isAnalyzing ? ( <><span className="spinner-btn-upload"></span> Analyzing...</> )
+             : ( <><FaFileUpload /> Upload MIDI</> )
+            }
           </button>
         </form>
       </div>
