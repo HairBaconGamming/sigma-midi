@@ -1,313 +1,372 @@
-// midi-sharing-webapp/routes/midis.js
+// routes/midis.js
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const multer = require('multer');
-const { GridFsStorage } = require('multer-gridfs-storage'); // NEW
-const crypto = require('crypto'); // For generating unique filenames
-const path = require('path');
-const axios = require('axios');
+const { createGridFsStorage } = require('../config/db'); // Storage engine cho GridFS
 const authMiddleware = require('../middleware/authMiddleware');
-const { getGfsBucket, getDb } = require('../config/dbMongo'); // NEW
-const { ObjectId } = require('mongodb'); // NEW, để làm việc với ID của GridFS
+const Midi = require('../models/Midi'); // Import Midi model
+const User = require('../models/User'); // Import User model (nếu cần populate)
 
-const DATABASE_API_URL = process.env.DATABASE_API_URL; // URL của SQLite metadata API
-
-// Create storage engine for Multer with GridFS
-let storage;
-if (process.env.MONGO_URI) {
-  storage = new GridFsStorage({
-    url: process.env.MONGO_URI,
-    options: { useNewUrlParser: true, useUnifiedTopology: true }, // Mặc dù có thể không cần với driver mới
-    file: (req, file) => {
-      return new Promise((resolve, reject) => {
-        crypto.randomBytes(16, (err, buf) => {
-          if (err) {
-            return reject(err);
-          }
-          const filename = buf.toString('hex') + path.extname(file.originalname);
-          const fileInfo = {
-            filename: filename,
-            bucketName: process.env.GRIDFS_MIDI_BUCKET_NAME || 'midiFilesBucket', // Tên bucket
-          };
-          resolve(fileInfo);
-        });
-      });
-    }
-  });
-} else {
-  console.warn("MONGO_URI not set. File uploads to GridFS will fail. Using memory storage as fallback (not recommended for production).");
-  storage = multer.memoryStorage(); // Fallback, không nên dùng cho production
-}
-
-
+// Khởi tạo GridFS storage engine
+const storage = createGridFsStorage();
 const upload = multer({
-  storage: storage,
-  limits: { fileSize: 10000000 }, // 10MB
+  storage,
+  limits: { fileSize: 15 * 1024 * 1024 }, // Giới hạn 15MB
   fileFilter: function (req, file, cb) {
-    checkFileType(file, cb);
+    if (file.mimetype === 'audio/midi' || file.mimetype === 'audio/mid' || file.originalname.match(/\.(mid|midi)$/i)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only MIDI files (.mid, .midi) are allowed.'), false);
+    }
   }
-}).single('midiFile');
-
-function checkFileType(file, cb) {
-  const filetypes = /midi|mid/;
-  const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = filetypes.test(file.mimetype);
-  if (mimetype && extname) {
-    return cb(null, true);
-  } else {
-    cb('Error: MIDI files only! (.mid, .midi)');
-  }
-}
-
-// @route   POST api/midis/upload
-// @desc    Upload a MIDI file to GridFS and metadata to SQLite API
-// @access  Private
-router.post('/upload', authMiddleware, (req, res) => {
-  if (!process.env.MONGO_URI) {
-    return res.status(500).json({ msg: "MongoDB URI not configured. File upload is disabled." });
-  }
-
-  upload(req, res, async (err) => {
-    if (err) {
-      console.error("Multer upload error:", err);
-      return res.status(400).json({ msg: err.message || err });
-    }
-    if (!req.file) {
-      return res.status(400).json({ msg: 'Error: No File Selected!' });
-    }
-
-    const { title, artist, description, arrangementBy, bpm, genre, tags, duration_seconds, key_signature, time_signature, difficulty, instrumentation, is_public } = req.body;
-    const uploaderId = req.user.id;
-    const uploaderUsername = req.user.username;
-
-    if (!title) {
-      // Nếu thiếu title, xóa file đã upload lên GridFS
-      const gfs = getGfsBucket();
-      if (gfs && req.file.id) {
-        gfs.delete(new ObjectId(req.file.id), (deleteErr) => {
-          if (deleteErr) console.error("Error deleting temp GridFS file after validation fail:", deleteErr);
-        });
-      }
-      return res.status(400).json({ msg: 'Title is required' });
-    }
-
-    try {
-      // Metadata để lưu vào SQLite API
-      const midiMetadata = {
-        title,
-        artist,
-        description,
-        arrangement_by: arrangementBy,
-        bpm: bpm ? parseInt(bpm) : null,
-        genre, tags, duration_seconds: duration_seconds ? parseInt(duration_seconds) : null,
-        key_signature, time_signature, difficulty: difficulty ? parseInt(difficulty) : null,
-        instrumentation,
-        uploader_id: uploaderId,
-        uploader_username: uploaderUsername,
-        original_filename: req.file.originalname,
-        // THAY ĐỔI QUAN TRỌNG:
-        stored_filename: req.file.filename, // Tên file trong GridFS
-        gridfs_file_id: req.file.id.toString(), // ID của file trong GridFS
-        file_path: `/api/midis/file/${req.file.id.toString()}/${encodeURIComponent(req.file.filename)}`, // Đường dẫn API để stream file
-        size_kb: Math.round(req.file.size / 1024),
-        is_public: is_public !== undefined ? (is_public === 'true' || is_public === true || is_public === 1 || is_public === '1') : true,
-        // thumbnail_url: // Logic tạo thumbnail nếu có
-      };
-
-      // Gọi Database API (SQLite) để lưu metadata
-      const response = await axios.post(`${DATABASE_API_URL}/midis`, midiMetadata);
-
-      res.json({
-        msg: 'MIDI uploaded and metadata saved.',
-        midi: response.data, // Metadata từ DB API (SQLite)
-        filePath: midiMetadata.file_path // Đường dẫn API để truy cập file từ GridFS
-      });
-
-    } catch (dbErr) {
-      console.error("Error saving MIDI metadata to SQLite API:", dbErr.response ? dbErr.response.data : dbErr.message);
-      // Xóa file đã upload lên GridFS nếu có lỗi với DB SQLite
-      const gfs = getGfsBucket();
-      if (gfs && req.file.id) {
-        gfs.delete(new ObjectId(req.file.id), (deleteErr) => {
-          if (deleteErr) console.error("Error deleting GridFS file after SQLite DB error:", deleteErr);
-        });
-      }
-      res.status(500).json({ msg: 'Server error while saving MIDI metadata' });
-    }
-  });
 });
 
 
-// @route   GET api/midis/file/:fileId/:filename
-// @desc    Stream/Download a MIDI file from GridFS
-// @access  Public
-router.get('/file/:fileId/:filename?', async (req, res) => {
-  const gfs = getGfsBucket();
-  if (!gfs) {
-    return res.status(500).json({ msg: "GridFS not available." });
+// @route   POST api/midis/upload
+// @desc    Upload a MIDI file and save its metadata
+// @access  Private
+router.post('/upload', authMiddleware, upload.single('midiFile'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ msg: 'No MIDI file uploaded.' });
+  }
+  if (!req.body.title) {
+    // Nếu thiếu title, cần xóa file đã upload lên GridFS
+    const gfs = req.app.get('gfs');
+    if (gfs && req.file.id) {
+        try {
+            await gfs.files.deleteOne({ _id: new mongoose.Types.ObjectId(req.file.id) });
+            // Also need to delete chunks if using older gridfs-stream
+            const gridFSBucket = req.app.get('gridFSBucket');
+            if (gridFSBucket) {
+                gridFSBucket.delete(new mongoose.Types.ObjectId(req.file.id));
+            }
+        } catch (deleteErr) {
+            console.error("Error deleting orphaned GridFS file:", deleteErr);
+        }
+    }
+    return res.status(400).json({ msg: 'Title is required.' });
   }
 
+  const { title, artist, description, genre, tags, duration_seconds, key_signature, time_signature,
+          difficulty, instrumentation, arrangement_by, bpm, is_public, thumbnail_url } = req.body;
+
   try {
-    const fileId = new ObjectId(req.params.fileId);
-    const files = await gfs.find({ _id: fileId }).toArray();
+    const newMidi = new Midi({
+      title,
+      artist,
+      description,
+      genre,
+      tags: tags ? tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [], // Xử lý tags
+      duration_seconds,
+      key_signature,
+      time_signature,
+      difficulty,
+      instrumentation,
+      arrangement_by,
+      bpm,
+      uploader: req.user.id, // ID của user từ token
+      // Thông tin file từ GridFS (req.file được cung cấp bởi multer-gridfs-storage)
+      fileId: req.file.id, // ID của file trong GridFS chunks
+      filenameGridFs: req.file.filename, // Tên file trong GridFS (thường là random hex)
+      original_filename: req.file.originalname,
+      contentType: req.file.contentType,
+      size_bytes: req.file.size,
+      is_public: is_public !== undefined ? (is_public === 'true' || is_public === true || is_public === '1') : true,
+      thumbnail_url
+    });
 
-    if (!files || files.length === 0) {
-      return res.status(404).json({ msg: 'No file exists with that ID' });
-    }
+    const savedMidi = await newMidi.save();
 
-    const file = files[0];
-    // Kiểm tra content type (tùy chọn, nhưng tốt cho MIDI)
-    if (file.contentType === 'audio/midi' || file.contentType === 'audio/mid' || file.filename.endsWith('.mid') || file.filename.endsWith('.midi')) {
-      // Set header để trình duyệt hiểu là file download hoặc có thể play trực tiếp
-      res.set('Content-Type', file.contentType);
-      // Sử dụng original_filename nếu có, nếu không dùng filename từ GridFS
-      // Để làm điều này, bạn cần query original_filename từ SQLite API dựa trên fileId (gridfs_file_id)
-      // Hoặc lưu original_filename vào metadata của GridFS file khi upload (phức tạp hơn với multer-gridfs-storage mặc định)
-      // Tạm thời dùng filename từ GridFS:
-      const downloadFilename = req.params.filename || file.filename; // filename từ GridFS
-      res.set('Content-Disposition', `attachment; filename="${downloadFilename}"`);
-      // res.set('Content-Disposition', `inline; filename="${downloadFilename}"`); // Nếu muốn trình duyệt thử mở
+    // Populate uploader info before sending response
+    const populatedMidi = await Midi.findById(savedMidi._id).populate('uploader', 'username profile_picture_url');
 
-      const readstream = gfs.openDownloadStream(fileId);
-      readstream.on('error', (err) => {
-        console.error("GridFS stream error:", err);
-        res.status(500).json({ msg: "Error streaming file." });
-      });
-      readstream.pipe(res);
-    } else {
-      res.status(404).json({ msg: 'Not a MIDI file' });
-    }
+    res.status(201).json({
+      msg: 'MIDI uploaded and metadata saved successfully.',
+      midi: populatedMidi,
+      // file_path không còn lưu trực tiếp ở đây, client sẽ dùng /api/files/stream/:fileId
+    });
+
   } catch (err) {
-    console.error("Error retrieving file from GridFS:", err);
-    if (err.name === "BSONTypeError") {
-        return res.status(400).json({ msg: 'Invalid File ID format.' });
+    console.error("Error saving MIDI metadata:", err.message);
+    // Nếu lỗi khi lưu metadata, xóa file đã upload lên GridFS
+    const gfs = req.app.get('gfs');
+     if (gfs && req.file && req.file.id) {
+        try {
+            await gfs.files.deleteOne({ _id: new mongoose.Types.ObjectId(req.file.id) });
+            const gridFSBucket = req.app.get('gridFSBucket');
+            if (gridFSBucket) {
+                gridFSBucket.delete(new mongoose.Types.ObjectId(req.file.id));
+            }
+        } catch (deleteErr) {
+            console.error("Error deleting GridFS file after metadata save failure:", deleteErr);
+        }
     }
-    res.status(500).json({ msg: 'Server error retrieving file' });
+    if (err.name === 'ValidationError') {
+        const messages = Object.values(err.errors).map(val => val.message);
+        return res.status(400).json({ msg: messages.join(', ') });
+    }
+    res.status(500).json({ msg: 'Server error while saving MIDI metadata.' });
   }
 });
 
 
 // @route   GET api/midis
-// @desc    Get all MIDIs (metadata từ SQLite API)
+// @desc    Get all public MIDIs with sorting, searching, pagination
 // @access  Public
 router.get('/', async (req, res) => {
   try {
-    // Forward request to SQLite metadata API
-    const response = await axios.get(`${DATABASE_API_URL}/midis`, { params: req.query });
-    res.json(response.data);
+    let {
+      sortBy = 'upload_date', order = 'desc', search = '',
+      uploaderId, genre, page = 1, limit = 12, difficulty: difficultyFilter
+    } = req.query;
+
+    page = parseInt(page, 10) || 1;
+    limit = parseInt(limit, 10) || 12;
+    const skip = (page - 1) * limit;
+
+    const query = { is_public: true };
+
+    if (search) {
+      const searchRegex = new RegExp(search, 'i'); // Case-insensitive search
+      query.$or = [ // Tìm kiếm trên nhiều trường
+        { title: searchRegex },
+        { artist: searchRegex },
+        { tags: searchRegex }, // Nếu tags là mảng string
+        { genre: searchRegex },
+        // { 'uploader.username': searchRegex } // Cần populate hoặc denormalize username
+      ];
+      // Nếu muốn search theo uploader username, cần populate hoặc denormalize
+      // Hoặc tìm user ID rồi filter theo uploader ID
+      const users = await User.find({ username: searchRegex }).select('_id');
+      if (users.length > 0) {
+        query.$or.push({ uploader: { $in: users.map(u => u._id) } });
+      }
+    }
+
+    if (uploaderId) {
+      query.uploader = uploaderId;
+    }
+    if (genre) {
+      query.genre = new RegExp(`^${genre}$`, 'i'); // Exact match case-insensitive
+    }
+    if (difficultyFilter) {
+        query.difficulty = parseInt(difficultyFilter);
+    }
+
+
+    const sortOptions = {};
+    const validSortFields = ['upload_date', 'title', 'artist', 'views', 'downloads', 'rating_avg', 'difficulty', 'last_updated_date', 'bpm', 'size_bytes'];
+    if (validSortFields.includes(sortBy)) {
+        sortOptions[sortBy] = (order === 'asc' ? 1 : -1);
+    } else {
+        sortOptions['upload_date'] = -1; // Default sort
+    }
+
+
+    const totalItems = await Midi.countDocuments(query);
+    const totalPages = Math.ceil(totalItems / limit);
+
+    const midis = await Midi.find(query)
+      .populate('uploader', 'username profile_picture_url') // Populate uploader info
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(limit)
+      .lean(); // .lean() for faster queries, returns plain JS objects
+
+    res.json({
+      midis,
+      totalItems,
+      totalPages,
+      currentPage: page,
+      itemsPerPage: limit,
+    });
+
   } catch (err) {
-    console.error("Error fetching MIDIs from metadata API:", err.response ? err.response.data : err.message);
-    res.status(err.response?.status || 500).json(err.response?.data || { msg: 'Server Error fetching MIDIs' });
+    console.error("Error fetching MIDIs:", err.message);
+    res.status(500).send('Server Error fetching MIDIs');
   }
 });
 
+
 // @route   GET api/midis/:id
-// @desc    Get a single MIDI by ID (metadata từ SQLite API)
+// @desc    Get a single MIDI by ID
 // @access  Public
 router.get('/:id', async (req, res) => {
   try {
-    const response = await axios.get(`${DATABASE_API_URL}/midis/${req.params.id}`);
-    // Tăng view count thông qua SQLite API
-    try {
-        await axios.put(`${DATABASE_API_URL}/midis/${req.params.id}/view`);
-    } catch (viewErr) {
-        console.warn("Could not update view count:", viewErr.message);
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        return res.status(400).json({ msg: 'Invalid MIDI ID format.' });
     }
-    res.json(response.data);
+
+    const midi = await Midi.findOne({ _id: req.params.id, is_public: true })
+                           .populate('uploader', 'username profile_picture_url'); // Populate uploader
+
+    if (!midi) {
+      return res.status(404).json({ msg: 'MIDI not found or is not public.' });
+    }
+
+    // Increment view count (không cần await nếu không gấp)
+    Midi.updateOne({ _id: req.params.id }, { $inc: { views: 1 } }).exec();
+
+    res.json(midi);
   } catch (err) {
-    console.error("Error fetching MIDI details from metadata API:", err.response ? err.response.data : err.message);
-    res.status(err.response?.status || 500).json(err.response?.data || { msg: 'Server Error fetching MIDI details' });
+    console.error("Error fetching MIDI by ID:", err.message);
+    res.status(500).send('Server Error');
   }
 });
 
 
-// @route   GET api/midis/download/:id (Metadata ID)
-// @desc    Track download and provide GridFS file path info
-// @access  Public
-router.get('/download/:id', async (req, res) => {
+// @route   PUT api/midis/:id
+// @desc    Update MIDI metadata
+// @access  Private (uploader or admin)
+router.put('/:id', authMiddleware, async (req, res) => {
+    const { title, artist, description, genre, tags, duration_seconds, key_signature, time_signature,
+            difficulty, instrumentation, arrangement_by, bpm, is_public, thumbnail_url } = req.body;
+    const midiId = req.params.id;
+    const userId = req.user.id;
+
+    if (!mongoose.Types.ObjectId.isValid(midiId)) {
+        return res.status(400).json({ msg: 'Invalid MIDI ID format.' });
+    }
+
     try {
-        const metadataId = req.params.id;
-        // 1. Lấy thông tin metadata từ SQLite API để có gridfs_file_id và original_filename
-        const midiInfoResponse = await axios.get(`${DATABASE_API_URL}/midis/${metadataId}`);
-        if (!midiInfoResponse.data || !midiInfoResponse.data.gridfs_file_id) { // Kiểm tra gridfs_file_id
-            return res.status(404).json({ msg: 'MIDI file information or GridFS ID not found in metadata.' });
-        }
-        const midi = midiInfoResponse.data;
-
-        // 2. Tăng download count thông qua SQLite API
-        try {
-            await axios.put(`${DATABASE_API_URL}/midis/${metadataId}/download`);
-        } catch (downloadCountErr) {
-            console.warn("Could not update download count:", downloadCountErr.message);
+        const midi = await Midi.findById(midiId);
+        if (!midi) {
+            return res.status(404).json({ msg: 'MIDI not found.' });
         }
 
-        // 3. Trả về thông tin để client có thể tạo link download đúng đến GridFS stream route
-        res.json({
-            msg: "Download tracked. Client should use the provided GridFS stream path.",
-            original_filename: midi.original_filename,
-            // Đường dẫn này client sẽ dùng để gọi GET /api/midis/file/:gridfs_file_id/:original_filename
-            download_path: `/api/midis/file/${midi.gridfs_file_id}/${encodeURIComponent(midi.original_filename || midi.stored_filename)}`
-        });
+        // Check if user is the uploader or an admin
+        const user = await User.findById(userId); // Lấy thông tin user hiện tại
+        if (midi.uploader.toString() !== userId && !(user && user.is_admin)) {
+            return res.status(403).json({ msg: 'User not authorized to update this MIDI.' });
+        }
+
+        // Update fields if provided
+        if (title !== undefined) midi.title = title;
+        if (artist !== undefined) midi.artist = artist;
+        if (description !== undefined) midi.description = description;
+        if (genre !== undefined) midi.genre = genre;
+        if (tags !== undefined) midi.tags = tags ? tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
+        if (duration_seconds !== undefined) midi.duration_seconds = duration_seconds;
+        if (key_signature !== undefined) midi.key_signature = key_signature;
+        if (time_signature !== undefined) midi.time_signature = time_signature;
+        if (difficulty !== undefined) midi.difficulty = difficulty;
+        if (instrumentation !== undefined) midi.instrumentation = instrumentation;
+        if (arrangement_by !== undefined) midi.arrangement_by = arrangement_by;
+        if (bpm !== undefined) midi.bpm = bpm;
+        if (is_public !== undefined) midi.is_public = (is_public === 'true' || is_public === true || is_public === '1');
+        if (thumbnail_url !== undefined) midi.thumbnail_url = thumbnail_url;
+
+        const updatedMidi = await midi.save(); // Hook pre-save sẽ cập nhật last_updated_date
+        const populatedMidi = await Midi.findById(updatedMidi._id).populate('uploader', 'username profile_picture_url');
+
+        res.json(populatedMidi);
 
     } catch (err) {
-        console.error("Download tracking error:", err.response ? err.response.data : err.message);
-        res.status(err.response?.status || 500).json(err.response?.data || { msg: 'Server Error during download tracking process' });
+        console.error("Error updating MIDI:", err.message);
+        if (err.name === 'ValidationError') {
+            const messages = Object.values(err.errors).map(val => val.message);
+            return res.status(400).json({ msg: messages.join(', ') });
+        }
+        res.status(500).send('Server error updating MIDI.');
     }
 });
 
 
-// @route   DELETE api/midis/:id (Metadata ID)
-// @desc    Delete MIDI metadata from SQLite and file from GridFS
-// @access  Private (authMiddleware handles user verification)
+// @route   DELETE api/midis/:id
+// @desc    Delete a MIDI (metadata and file from GridFS)
+// @access  Private (uploader or admin)
 router.delete('/:id', authMiddleware, async (req, res) => {
-    const metadataId = req.params.id;
-    const userId = req.user.id; // User ID từ token
+    const midiId = req.params.id;
+    const userId = req.user.id;
+
+    if (!mongoose.Types.ObjectId.isValid(midiId)) {
+        return res.status(400).json({ msg: 'Invalid MIDI ID format.' });
+    }
 
     try {
-        // 1. Lấy thông tin MIDI từ SQLite API để kiểm tra uploader và lấy gridfs_file_id
-        let midiMetadata;
-        try {
-            const metaRes = await axios.get(`${DATABASE_API_URL}/midis/${metadataId}`);
-            midiMetadata = metaRes.data;
-        } catch (e) {
-            if (e.response && e.response.status === 404) return res.status(404).json({ msg: 'MIDI metadata not found.' });
-            throw e; // Re-throw other errors
+        const midi = await Midi.findById(midiId);
+        if (!midi) {
+            return res.status(404).json({ msg: 'MIDI not found.' });
         }
 
-        // 2. Kiểm tra quyền (uploader hoặc admin - logic admin cần thêm ở DB API hoặc đây)
-        if (midiMetadata.uploader_id !== userId /* && !req.user.isAdmin */) {
+        const user = await User.findById(userId);
+        if (midi.uploader.toString() !== userId && !(user && user.is_admin)) {
             return res.status(403).json({ msg: 'User not authorized to delete this MIDI.' });
         }
 
-        const gridfsFileId = midiMetadata.gridfs_file_id;
+        // Delete file from GridFS
+        const gfs = req.app.get('gfs');
+        const gridFSBucket = req.app.get('gridFSBucket');
 
-        // 3. Xóa file từ GridFS
-        if (gridfsFileId) {
-            const gfs = getGfsBucket();
-            if (gfs) {
-                try {
-                    await gfs.delete(new ObjectId(gridfsFileId));
-                    console.log(`GridFS file ${gridfsFileId} deleted successfully.`);
-                } catch (gfsErr) {
-                    console.error(`Error deleting GridFS file ${gridfsFileId}:`, gfsErr);
-                    // Quyết định có tiếp tục xóa metadata không nếu xóa file lỗi
-                    // return res.status(500).json({ msg: 'Failed to delete MIDI file from storage.' });
-                }
+        if (gfs && gridFSBucket && midi.fileId) {
+            try {
+                await gridFSBucket.delete(new mongoose.Types.ObjectId(midi.fileId));
+                console.log(`GridFS file ${midi.filenameGridFs} (ID: ${midi.fileId}) deleted.`);
+            } catch (gridfsErr) {
+                // Log error but proceed to delete metadata, as file might not exist or other issue
+                console.error(`Error deleting GridFS file ${midi.filenameGridFs}: ${gridfsErr.message}`);
             }
         } else {
-            console.warn(`No GridFS file ID found for metadata ID ${metadataId}. Skipping GridFS deletion.`);
+            console.warn(`GridFS instance or fileId not available for MIDI ${midiId}. File may not be deleted from GridFS.`);
         }
 
-        // 4. Xóa metadata từ SQLite API
-        await axios.delete(`${DATABASE_API_URL}/midis/${metadataId}`); // DB API cần hỗ trợ DELETE
+        // Delete MIDI metadata from database
+        await Midi.deleteOne({ _id: midiId }); // Use deleteOne
 
-        res.json({ msg: 'MIDI deleted successfully from both storage and database.' });
+        res.json({ msg: 'MIDI deleted successfully (metadata and file).' });
 
     } catch (err) {
-        console.error("Error deleting MIDI:", err.response ? err.response.data : err.message);
-        res.status(err.response?.status || 500).json(err.response?.data || { msg: 'Server error during MIDI deletion' });
+        console.error("Error deleting MIDI:", err.message);
+        res.status(500).send('Server error deleting MIDI.');
     }
 });
 
+
+// @route   GET api/midis/download-track/:id
+// @desc    Track a download (increments count). Actual download is via /api/files/stream/:fileId
+// @access  Public
+router.get('/download-track/:id', async (req, res) => {
+    try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(400).json({ msg: 'Invalid MIDI ID format.' });
+        }
+        const updatedMidi = await Midi.findByIdAndUpdate(
+            req.params.id,
+            { $inc: { downloads: 1 } },
+            { new: true } // Trả về document đã update
+        );
+        if (!updatedMidi) {
+            return res.status(404).json({ msg: 'MIDI not found to track download.' });
+        }
+        res.json({ msg: 'Download tracked successfully.', downloads: updatedMidi.downloads });
+    } catch (err) {
+        console.error("Error tracking MIDI download:", err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
+
+// Placeholder for thumbnail generation or retrieval (if not just a URL)
+// Ví dụ: /api/midis/placeholder-thumbnail/:num.png
+// Bạn cần tạo logic để phục vụ ảnh này (ví dụ: tạo SVG động hoặc phục vụ file tĩnh)
+router.get('/placeholder-thumbnail/:num.png', (req, res) => {
+    const num = parseInt(req.params.num) || 0;
+    const colors = ["#10b981", "#8b5cf6", "#f59e0b", "#3b82f6", "#ec4899", "#6366f1"];
+    const color = colors[num % colors.length];
+    const svg = `
+        <svg width="320" height="180" xmlns="http://www.w3.org/2000/svg">
+            <rect width="100%" height="100%" fill="${color}" />
+            <text x="50%" y="50%" font-family="Arial, sans-serif" font-size="20" fill="#fff" text-anchor="middle" dy=".3em">
+                sigmaMIDI ${num}
+            </text>
+        </svg>
+    `;
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.send(svg);
+});
+
+
+// TODO: Routes for Comments, Ratings, Favorites
 
 module.exports = router;
