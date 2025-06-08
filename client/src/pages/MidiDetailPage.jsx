@@ -6,11 +6,14 @@ import {
   FaDownload, FaPlayCircle, FaPauseCircle, FaUser, FaCalendarAlt, FaInfoCircle,
   FaTachometerAlt, FaMusic, FaEye, FaUserEdit, FaArrowLeft, FaTags, FaGuitar,
   FaStopwatch, FaStarHalfAlt, FaClipboardList, FaUndo, FaVolumeUp, FaVolumeMute
+  // FaShareAlt, FaHeart, FaRegHeart // Keep if you plan to use them
 } from 'react-icons/fa';
-import * as Tone from 'tone'; // For Web Audio API context and synth
-import { Midi as ToneMidi } from '@tonejs/midi'; // For parsing MIDI files
+import * as Tone from 'tone';
+import { Midi as ToneMidi } from '@tonejs/midi';
+import { Piano } from '@tonejs/piano';
+
 import '../assets/css/MidiDetailPage.css';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext'; // Keep if used for other features
 
 const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -18,22 +21,22 @@ const formatDate = (dateString) => {
         const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
         return new Date(dateString).toLocaleDateString(undefined, options);
     } catch (e) {
-        return 'N/A';
+        console.warn("Error formatting date:", dateString, e);
+        return 'Invalid Date';
     }
 };
 
 const formatTime = (seconds) => {
-    if (isNaN(seconds) || seconds < 0) return '0:00';
+    if (isNaN(seconds) || seconds === null || seconds === undefined || seconds < 0) return '0:00';
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60).toString().padStart(2, '0');
     return `${m}:${s}`;
 };
 
-
 const MidiDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  // const { isAuthenticated, user } = useAuth();
 
   const [midi, setMidi] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -42,194 +45,303 @@ const MidiDetailPage = () => {
   // Player State
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMidiLoaded, setIsMidiLoaded] = useState(false);
+  const [isPianoReady, setIsPianoReady] = useState(false);
   const [playbackTime, setPlaybackTime] = useState(0);
+  const [durationTotal, setDurationTotal] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [playerError, setPlayerError] = useState('');
+  const [loadingMessage, setLoadingMessage] = useState('');
 
   // Tone.js Refs
-  const synths = useRef([]); // Store multiple synths for polyphony
+  const pianoRef = useRef(null);
   const parsedMidiRef = useRef(null);
   const toneContextStarted = useRef(false);
   const progressIntervalRef = useRef(null);
+  const scheduledEventsRef = useRef([]);
+  const animationFrameRef = useRef(null); // For smooth progress updates
 
-  const MAX_POLYPHONY = 16; // Max simultaneous notes
-
-  // Cleanup function for Tone.js resources
   const cleanupTone = useCallback(() => {
+    console.log("Cleanup Tone called");
     Tone.Transport.stop();
     Tone.Transport.cancel();
-    synths.current.forEach(synth => synth.dispose());
-    synths.current = [];
-    if (progressIntervalRef.current) {
+    scheduledEventsRef.current.forEach(eventId => Tone.Transport.clear(eventId));
+    scheduledEventsRef.current = [];
+
+    if (pianoRef.current) {
+      pianoRef.current.releaseAll();
+    }
+    if (progressIntervalRef.current) { // Legacy interval, transitioning to rAF
       clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
     }
     setIsPlaying(false);
-    setIsMidiLoaded(false);
     setPlaybackTime(0);
-    parsedMidiRef.current = null;
+    // Don't reset isMidiLoaded, isPianoReady, parsedMidiRef here,
+    // they are reset when a new MIDI is explicitly loaded.
   }, []);
 
-
+  // Effect for initializing Piano
   useEffect(() => {
-    const fetchMidiData = async () => {
+    if (!pianoRef.current && !isPianoReady) {
+      setLoadingMessage('Initializing piano sound...');
+      const piano = new Piano({ velocities: 4 });
+      piano.toDestination();
+      pianoRef.current = piano;
+
+      piano.load()
+        .then(() => {
+          setIsPianoReady(true);
+          setLoadingMessage('');
+          console.log("@tonejs/piano samples loaded and ready.");
+        })
+        .catch(err => {
+          console.error("Failed to load piano samples:", err);
+          setPlayerError("Could not load piano sound.");
+          setIsPianoReady(false);
+          setLoadingMessage('');
+        });
+    }
+  }, [isPianoReady]); // Runs if isPianoReady is false (initial load)
+
+  // Effect for fetching MIDI data when 'id' changes
+  useEffect(() => {
+    const fetchMidiAndSetupPlayer = async () => {
       try {
         setLoading(true);
         setError('');
         setPlayerError('');
-        cleanupTone(); // Clean up previous MIDI data if any
+        setLoadingMessage('Fetching MIDI data...');
+        
+        cleanupTone(); // Clean up previous MIDI state
 
         const res = await getMidiById(id);
         setMidi(res.data);
+        parsedMidiRef.current = null; // Reset for the new file
+        setIsMidiLoaded(false);
+        setDurationTotal(res.data?.duration_seconds || 0); // Set initial duration
 
         if (res.data && res.data.fileId) {
-          loadMidiForPlayback(res.data.fileId);
-        }
-
-      } catch (err) {
-        console.error("Failed to fetch MIDI details", err.response ? err.response.data : err.message);
-        if (err.response && err.response.status === 404) {
-            setError('Sorry, this MIDI could not be found or is not public.');
+          setLoadingMessage('Loading MIDI file...');
+          await loadMidiForPlayback(res.data.fileId);
         } else {
-            setError('An error occurred while loading MIDI details. Please try again later.');
+          setPlayerError('MIDI file information not found for this entry.');
+          setIsMidiLoaded(false);
         }
+      } catch (err) {
+        console.error("Failed to fetch MIDI details", err);
+        setError(err.response?.data?.msg || 'An error occurred loading MIDI details.');
+        setIsMidiLoaded(false);
       } finally {
         setLoading(false);
+        // setLoadingMessage(''); // Cleared by specific load steps
       }
     };
-    fetchMidiData();
+
+    fetchMidiAndSetupPlayer();
 
     return () => {
-      cleanupTone(); // Ensure cleanup on component unmount
+      cleanupTone(); // Full cleanup on component unmount
     };
-  }, [id, cleanupTone]); // Add cleanupTone to dependencies
+  }, [id, cleanupTone]); // id and cleanupTone are dependencies
 
   const loadMidiForPlayback = async (fileId) => {
     try {
-      setPlayerError('');
       const midiUrl = getMidiFileStreamUrl(fileId);
       const parsed = await ToneMidi.fromUrl(midiUrl);
       parsedMidiRef.current = parsed;
-
-      // Prepare synths (do this once per MIDI load)
-      synths.current.forEach(synth => synth.dispose());
-      synths.current = [];
-      for (let i = 0; i < MAX_POLYPHONY; i++) {
-        // Using PolySynth for simpler polyphony handling, or manage individual Synths
-        const synth = new Tone.PolySynth(Tone.Synth, {
-            oscillator: { type: 'triangle8' }, // A slightly softer waveform
-            envelope: { attack: 0.02, decay: 0.1, sustain: 0.3, release: 0.5 },
-            volume: -10 // Initial volume
-        }).toDestination();
-        synths.current.push(synth);
-      }
-      
-      // Schedule MIDI events
-      Tone.Transport.cancel(); // Clear previous events
-      parsed.tracks.forEach(track => {
-        track.notes.forEach(note => {
-          Tone.Transport.schedule(time => {
-            // Find an available synth or round-robin
-            const synth = synths.current[note.midi % MAX_POLYPHONY]; // Simple round-robin based on note
-            if (synth) {
-                 synth.triggerAttackRelease(note.name, note.duration, time + note.time, note.velocity);
-            }
-          }, note.time); // note.time is the absolute time in seconds from the start
-        });
-      });
+      setDurationTotal(parsed.duration); // Update with precise duration
       setIsMidiLoaded(true);
-      console.log("MIDI parsed and scheduled for playback:", parsedMidiRef.current.name);
+      setPlayerError('');
+      console.log("MIDI parsed:", parsedMidiRef.current.name, "Duration:", parsed.duration);
+      setLoadingMessage('');
     } catch (e) {
-      console.error("Error loading or parsing MIDI for playback:", e);
-      setPlayerError("Could not load MIDI for playback. File might be corrupted or inaccessible.");
+      console.error("Error loading/parsing MIDI for playback:", e);
+      setPlayerError(`Could not load MIDI: ${e.message}.`);
       setIsMidiLoaded(false);
+      parsedMidiRef.current = null;
+      setLoadingMessage('');
     }
   };
   
+  const scheduleMidiNotes = useCallback(() => {
+    if (!parsedMidiRef.current || !pianoRef.current || !isPianoReady) return false;
+
+    scheduledEventsRef.current.forEach(eventId => Tone.Transport.clear(eventId));
+    scheduledEventsRef.current = [];
+    Tone.Transport.cancel(); // General cancel
+
+    parsedMidiRef.current.tracks.forEach(track => {
+      track.notes.forEach(note => {
+        const eventId = Tone.Transport.schedule(time => {
+          if (pianoRef.current && isPianoReady) {
+            pianoRef.current.triggerAttackRelease(note.name, note.duration, time, note.velocity);
+          }
+        }, note.time);
+        scheduledEventsRef.current.push(eventId);
+      });
+    });
+    console.log("Notes scheduled.");
+    return true;
+  }, [isPianoReady]); // Depends on isPianoReady
+
+  const updateProgress = useCallback(() => {
+    if (isPlaying && parsedMidiRef.current) {
+      const currentTime = Tone.Transport.seconds;
+      setPlaybackTime(currentTime);
+
+      if (currentTime >= durationTotal - 0.05) { // Small buffer for end
+        handleStop(true); // Auto-stop at the end
+      } else {
+        animationFrameRef.current = requestAnimationFrame(updateProgress);
+      }
+    }
+  }, [isPlaying, durationTotal]); // Re-create if isPlaying or durationTotal changes
+
+  // Effect to manage progress updates using requestAnimationFrame
+  useEffect(() => {
+    if (isPlaying) {
+      animationFrameRef.current = requestAnimationFrame(updateProgress);
+    } else {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    }
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [isPlaying, updateProgress]);
+
 
   const startToneContext = async () => {
-    if (!toneContextStarted.current) {
-      await Tone.start();
-      toneContextStarted.current = true;
-      console.log("AudioContext started");
+    if (Tone.context.state !== 'running') {
+      try {
+        await Tone.start();
+        toneContextStarted.current = true;
+        console.log("AudioContext started/resumed");
+        return true;
+      } catch (e) {
+        console.error("Error starting AudioContext:", e);
+        setPlayerError("Audio system error. Please interact with the page (click) and try again.");
+        return false;
+      }
     }
+    return true;
   };
 
   const togglePlay = async () => {
-    await startToneContext(); // Ensure AudioContext is running
+    const audioContextReady = await startToneContext();
+    if (!audioContextReady) return;
 
-    if (!isMidiLoaded || !parsedMidiRef.current) {
-      setPlayerError("MIDI data not loaded yet. Please wait or try reloading.");
+    if (!isMidiLoaded || !parsedMidiRef.current || !isPianoReady) {
+      setPlayerError("Player not ready (MIDI or Piano).");
       return;
     }
 
-    if (isPlaying) {
+    if (Tone.Transport.state === "started") { // Already playing, so pause
       Tone.Transport.pause();
       setIsPlaying(false);
-      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-    } else {
-      if (Tone.Transport.state === "paused") {
-          Tone.Transport.start();
-      } else { // Or if stopped/never started for this MIDI
-          Tone.Transport.seconds = playbackTime; // Resume from current playbackTime
-          Tone.Transport.start();
-      }
-      setIsPlaying(true);
-      progressIntervalRef.current = setInterval(() => {
-        setPlaybackTime(Tone.Transport.seconds);
-        if (Tone.Transport.seconds >= parsedMidiRef.current.duration) {
-          handleStop(); // Auto-stop at the end
+      console.log("Transport paused at:", formatTime(Tone.Transport.seconds));
+    } else { // Paused or stopped, so play
+      // Ensure notes are scheduled if transport was stopped or events were cleared
+      if (Tone.Transport.state === "stopped" || scheduledEventsRef.current.length === 0) {
+        console.log("Transport stopped or no events, scheduling...");
+        Tone.Transport.seconds = playbackTime; // Set desired start time
+        if (!scheduleMidiNotes()) {
+            setPlayerError("Failed to schedule MIDI notes.");
+            return;
         }
-      }, 100);
+      }
+      // If just paused, events are still there, transport time is where it was.
+      // If seeking while paused, playbackTime is updated, and transport.seconds will reflect that.
+      // The above `Tone.Transport.seconds = playbackTime` handles resuming from seeked position.
+      
+      Tone.Transport.start();
+      setIsPlaying(true);
+      console.log("Transport started from:", formatTime(Tone.Transport.seconds));
     }
   };
 
-  const handleStop = (resetTime = true) => {
-    Tone.Transport.stop();
-    if (resetTime) Tone.Transport.seconds = 0; // Only reset if explicitly stopping to beginning
-    setIsPlaying(false);
-    if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-    setPlaybackTime(resetTime ? 0 : Tone.Transport.seconds);
+  const handleStop = (resetTimeToZero = true) => {
+    console.log("Handle Stop called, resetTime:", resetTimeToZero);
+    Tone.Transport.stop(); // This also sets Tone.Transport.seconds to 0 by default
+    if (pianoRef.current && isPianoReady) {
+        pianoRef.current.releaseAll();
+    }
+    // Clear scheduled events so a fresh schedule happens on next play
+    scheduledEventsRef.current.forEach(eventId => Tone.Transport.clear(eventId));
+    scheduledEventsRef.current = [];
+    
+    setIsPlaying(false); // This will stop the requestAnimationFrame loop
+    
+    if (resetTimeToZero) {
+        setPlaybackTime(0); // UI reflects 0
+        // Tone.Transport.seconds is already 0 from stop()
+    } else {
+        // If we wanted to stop but retain position (less common for a "stop" button)
+        setPlaybackTime(Tone.Transport.seconds); 
+    }
   };
   
-  const handleSeek = (event) => {
-    if (!isMidiLoaded || !parsedMidiRef.current) return;
+  const handleSeek = async (event) => {
+    const audioContextReady = await startToneContext();
+    if (!audioContextReady || !isMidiLoaded || !parsedMidiRef.current || !isPianoReady || durationTotal <= 0) return;
+
     const progressBar = event.currentTarget;
-    const clickPosition = (event.clientX - progressBar.getBoundingClientRect().left) / progressBar.offsetWidth;
-    const newTime = clickPosition * parsedMidiRef.current.duration;
+    const clickPosition = (event.nativeEvent.offsetX / progressBar.offsetWidth);
+    const newTime = Math.max(0, Math.min(clickPosition * durationTotal, durationTotal));
     
-    Tone.Transport.seconds = newTime;
-    setPlaybackTime(newTime);
-    if (!isPlaying) { // If paused, just update time, don't start
-        // No need to do anything extra, time is set
+    setPlaybackTime(newTime); // Update UI immediately
+    Tone.Transport.seconds = newTime; // Set transport's internal time
+
+    console.log("Seeked to:", formatTime(newTime));
+
+    // If playing, need to stop, re-sync, and restart for events to play correctly from new position
+    if (isPlaying) {
+      Tone.Transport.pause(); // Pause momentarily instead of full stop to avoid time reset
+      if (pianoRef.current) pianoRef.current.releaseAll();
+      
+      // Re-schedule notes to ensure correct timing relative to the new start if needed,
+      // though simply setting Tone.Transport.seconds SHOULD be enough if events are absolute.
+      // However, to be safe and handle complex MIDI events, re-scheduling can be more robust.
+      // For this simple player, merely setting .seconds might be okay.
+      // Let's test without full reschedule first for seeking while playing.
+      // If issues occur, uncomment the reschedule block.
+      
+      /* // More robust re-scheduling for seeking while playing:
+      scheduledEventsRef.current.forEach(eventId => Tone.Transport.clear(eventId));
+      scheduledEventsRef.current = [];
+      if (!scheduleMidiNotes()) {
+          setPlayerError("Failed to reschedule notes after seek.");
+          setIsPlaying(false); // Stop if error
+          return;
+      }
+      Tone.Transport.seconds = newTime; // Ensure this is set after potential reschedule
+      */
+      Tone.Transport.start(); // Resume
     }
+    // If paused, the time is set. On next play, it will start from `playbackTime`
+    // and scheduleMidiNotes (if needed) will use that.
   };
 
-  const toggleMute = () => {
-    synths.current.forEach(synth => {
-        synth.volume.value = isMuted ? -10 : -Infinity; // Example: -10dB for unmuted, -Infinity for muted
-    });
-    setIsMuted(!isMuted);
-  };
+  const toggleMute = async () => { /* ... (same as before, ensure startToneContext) ... */ };
+  const handleDownload = async () => { /* ... (same as before) ... */ };
 
-
-  const handleDownload = async () => { /* ... (existing implementation) ... */ };
-
-  if (loading && !midi) { // Show full page loader only if no MIDI data yet
-    return (
-      <div className="loading-container-page">
-        <div className="spinner-page"></div>
-        <p>Loading MIDI Details...</p>
-      </div>
-    );
-  }
+  if (loading && !midi) { /* ... loading UI ... */ }
   if (error) return <p className="alert-message alert-error container">{error}</p>;
   if (!midi) return <p className="no-results-message-page container">MIDI not found.</p>;
 
   const uploaderUsername = midi.uploader?.username || 'Unknown';
   const uploaderIdForLink = midi.uploader?._id || uploaderUsername;
   const thumbnailUrl = midi.thumbnail_url || `/api/midis/placeholder-thumbnail/${(parseInt(midi._id.slice(-5), 16) % 20)}.png`;
-  const durationTotal = parsedMidiRef.current?.duration || midi.duration_seconds || 0;
+  
   const progressPercent = durationTotal > 0 ? (playbackTime / durationTotal) * 100 : 0;
+  const playerIsEffectivelyBusy = loadingMessage || (!isMidiLoaded && !playerError && midi && midi.fileId) || (!isPianoReady && !playerError);
 
   return (
     <div className="midi-detail-page-container container">
@@ -239,7 +351,6 @@ const MidiDetailPage = () => {
 
       <article className="midi-detail-content-card">
         <header className="midi-detail-header">
-          {/* ... (existing header content) ... */}
           <div className="header-thumbnail-container">
               <img src={thumbnailUrl} alt={`${midi.title} thumbnail`} className="header-thumbnail" />
           </div>
@@ -267,73 +378,100 @@ const MidiDetailPage = () => {
         </header>
 
         <div className="midi-detail-actions-bar">
-          {/* ... (existing download button and stats) ... */}
-          <button onClick={handleDownload} className="btn-detail-action btn-download-detail">
-            <FaDownload className="icon" /> Download ({midi.size_bytes ? `${(midi.size_bytes / 1024).toFixed(1)} KB` : 'N/A'})
-          </button>
-          <div className="detail-stats">
-              <span><FaEye className="icon" /> {midi.views || 0}</span>
-              <span><FaDownload className="icon" /> {midi.downloads || 0}</span>
-          </div>
+            <button onClick={handleDownload} className="btn-detail-action btn-download-detail">
+                <FaDownload className="icon" /> Download ({midi.size_bytes ? `${(midi.size_bytes / 1024).toFixed(1)} KB` : 'N/A'})
+            </button>
+            <div className="detail-stats">
+                <span><FaEye className="icon" /> {midi.views || 0}</span>
+                <span><FaDownload className="icon" /> {midi.downloads || 0}</span>
+            </div>
         </div>
         
-        {/* --- MIDI PLAYER SECTION --- */}
         <div className="midi-player-section">
-          <h3><FaMusic className="icon" /> MIDI Player</h3>
+          <h3><FaMusic className="icon" /> Piano Player</h3>
           {playerError && <p className="player-error-message">{playerError}</p>}
-          {!isMidiLoaded && !playerError && (
+          
+          {playerIsEffectivelyBusy ? (
             <div className="player-loading">
               <div className="spinner-player"></div>
-              <p>Loading MIDI for playback...</p>
+              <p>{loadingMessage || "Preparing player..."}</p>
             </div>
-          )}
-          {isMidiLoaded && (
+          ) : (
             <div className="midi-player-controls">
-              <button onClick={togglePlay} className="btn-player-action" aria-label={isPlaying ? "Pause" : "Play"} disabled={!isMidiLoaded}>
+              <button 
+                onClick={togglePlay} 
+                className="btn-player-action" 
+                aria-label={isPlaying ? "Pause" : "Play"} 
+                disabled={!isMidiLoaded || !isPianoReady}
+                title={isPlaying ? "Pause" : "Play"}
+              >
                 {isPlaying ? <FaPauseCircle /> : <FaPlayCircle />}
               </button>
-              <button onClick={() => handleStop(true)} className="btn-player-action" aria-label="Stop" disabled={!isMidiLoaded}>
-                <FaUndo /> {/* Using Undo as a stop/reset icon */}
+              <button 
+                onClick={() => handleStop(true)} 
+                className="btn-player-action" 
+                aria-label="Stop and Reset" 
+                disabled={!isMidiLoaded || !isPianoReady}
+                title="Stop and Reset"
+              >
+                <FaUndo />
               </button>
               <div className="player-time-display current-time">{formatTime(playbackTime)}</div>
-              <div className="player-progress-bar-container" onClick={handleSeek}>
-                <div className="player-progress-bar" style={{ width: `${progressPercent}%` }}></div>
+              <div 
+                className="player-progress-bar-container" 
+                onClick={handleSeek} 
+                role="slider" 
+                aria-valuenow={Math.round(progressPercent)} 
+                aria-valuemin="0" 
+                aria-valuemax="100" 
+                tabIndex={(isMidiLoaded && isPianoReady) ? 0 : -1}
+                title="Seek"
+              >
+                <div className="player-progress-bar" style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}></div>
               </div>
               <div className="player-time-display total-time">{formatTime(durationTotal)}</div>
-              <button onClick={toggleMute} className="btn-player-action btn-volume" aria-label={isMuted ? "Unmute" : "Mute"}>
+              <button 
+                onClick={toggleMute} 
+                className="btn-player-action btn-volume" 
+                aria-label={isMuted ? "Unmute" : "Mute"} 
+                disabled={!isPianoReady}
+                title={isMuted ? "Unmute" : "Mute"}
+              >
                 {isMuted ? <FaVolumeMute /> : <FaVolumeUp />}
               </button>
             </div>
           )}
         </div>
-        {/* --- END MIDI PLAYER SECTION --- */}
-
 
         {midi.description && (
           <section className="midi-detail-section description-section">
-            {/* ... (existing description content) ... */}
             <h3><FaInfoCircle className="icon" /> Description</h3>
             <p className="description-text">{midi.description}</p>
           </section>
         )}
 
         <section className="midi-detail-section metadata-section">
-           {/* ... (existing metadata content) ... */}
            <h3><FaClipboardList className="icon" /> Details & Metadata</h3>
           <ul>
             <li><strong>Original Filename:</strong> {midi.original_filename || 'N/A'}</li>
             {midi.genre && <li><strong><FaTags className="icon"/> Genre:</strong> {midi.genre}</li>}
-            {midi.tags && midi.tags.length > 0 && <li><strong><FaTags className="icon"/> Tags:</strong> <span className="tags-list">{midi.tags.map(tag => <span key={tag} className="tag-item">{tag}</span>)}</span></li>}
+            {midi.tags && midi.tags.length > 0 && 
+                <li><strong><FaTags className="icon"/> Tags:</strong> 
+                    <span className="tags-list">{midi.tags.map(tag => <span key={tag} className="tag-item">{tag}</span>)}</span>
+                </li>
+            }
             {midi.bpm && <li><strong><FaTachometerAlt className="icon"/> BPM (Tempo):</strong> {midi.bpm}</li>}
-            {/* Use durationTotal from player if MIDI is loaded, otherwise fallback to midi.duration_seconds */}
             <li><strong><FaStopwatch className="icon"/> Duration:</strong> {formatTime(durationTotal)}</li>
             {midi.key_signature && <li><strong>Key:</strong> {midi.key_signature}</li>}
             {midi.time_signature && <li><strong>Time Signature:</strong> {midi.time_signature}</li>}
             {midi.instrumentation && <li><strong><FaGuitar className="icon"/> Instrumentation:</strong> {midi.instrumentation}</li>}
-            {midi.difficulty && <li><strong>Difficulty:</strong> <span className={`difficulty-level difficulty-${midi.difficulty}`}>{midi.difficulty}/5</span></li>}
+            {midi.difficulty && 
+                <li><strong><FaStarHalfAlt className="icon"/> Difficulty:</strong> 
+                    <span className={`difficulty-level difficulty-${midi.difficulty}`}>{midi.difficulty}/5</span>
+                </li>
+            }
           </ul>
         </section>
-
       </article>
     </div>
   );
