@@ -304,6 +304,26 @@
   transform: translateY(-9.5px) rotate(-45deg);
 }
 
+.user-avatar-container .user-avatar-image {
+  width: 30px; /* Adjust size as needed */
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: var(--spacing-sm); /* If user-name is also displayed next to it */
+  border: 1px solid var(--color-border); /* Optional border */
+}
+
+.user-avatar-container .user-avatar-icon {
+  font-size: 1.75rem; 
+  color: var(--color-text-dark);
+  transition: color var(--transition-default);
+  /* If you have an image and want the icon next to user-name when image is not available */
+  /* margin-right: var(--spacing-sm); */
+}
+.user-avatar-container:hover .user-avatar-icon {
+    color: var(--color-primary);
+}
+
 /* Responsive Adjustments */
 @media (min-width: 992px) { /* Show text next to icons on larger screens */
   .nav-icon-text {

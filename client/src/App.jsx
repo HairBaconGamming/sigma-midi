@@ -12,6 +12,7 @@ import MyProfilePage from './pages/MyProfilePage'; // Import mới
 import MyMidisPage from './pages/MyMidisPage';   // Import mới
 import UserProfilePage from './pages/UserProfilePage';
 import LeaderboardPage from './pages/LeaderboardPage';
+import DesktopAppPage from './pages/DesktopAppPage'; 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import './assets/css/App.css';
 import Footer from './components/layout/Footer'; // Import Footer
@@ -81,6 +82,7 @@ function AppContent() {
           />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/profile/:userId" element={<UserProfilePage />} />
+          <Route path="/desktop-app" element={<DesktopAppPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

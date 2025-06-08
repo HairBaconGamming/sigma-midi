@@ -2,7 +2,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { FaMusic, FaTrophy, FaDiscord, FaUpload, FaSignInAlt, FaUserCircle, FaSignOutAlt } from 'react-icons/fa'; // Using react-icons
+import { 
+    FaMusic, FaTrophy, FaUpload, FaSignInAlt, FaUserCircle, 
+    FaSignOutAlt, FaDesktop // Added FaDesktop
+} from 'react-icons/fa';
 import '../../assets/css/Navbar.css';
 
 const Navbar = () => {
@@ -12,7 +15,7 @@ const Navbar = () => {
 
   const handleLogout = () => {
     logout();
-    setIsMobileMenuOpen(false);
+    setIsMobileMenuOpen(false); // Close mobile menu on logout
     navigate('/');
   };
 
@@ -29,7 +32,6 @@ const Navbar = () => {
       <div className="navbar-container">
         <div className="navbar-brand">
           <Link to="/" onClick={closeMobileMenu}>
-            {/* You can use an SVG logo here if you have one */}
             <span className="brand-sigma">sigma</span>
             <span className="brand-midi">MIDI</span>
           </Link>
@@ -46,15 +48,23 @@ const Navbar = () => {
         <div className={`navbar-links ${isMobileMenuOpen ? 'open' : ''}`}>
           <ul>
             <li>
-              <a to="/" title="Music Platform" onClick={closeMobileMenu}>
-                <FaMusic /> <span className="nav-icon-text">Midis</span>
-              </a>
+              <Link to="/" title="MIDIs Repository" onClick={closeMobileMenu}> {/* Changed title for clarity */}
+                <FaMusic /> <span className="nav-icon-text">MIDIs</span>
+              </Link>
             </li>
             <li>
               <Link to="/leaderboard" title="Leaderboard" onClick={closeMobileMenu}>
                 <FaTrophy /> <span className="nav-icon-text">Scores</span>
               </Link>
             </li>
+            {/* NEW LINK FOR DESKTOP APP */}
+            <li>
+              <Link to="/desktop-app" title="Desktop Player App" onClick={closeMobileMenu}>
+                <FaDesktop /> <span className="nav-icon-text">Desktop App</span>
+              </Link>
+            </li>
+            {/* END NEW LINK */}
+
             {isAuthenticated ? (
               <>
                 <li>
@@ -63,15 +73,31 @@ const Navbar = () => {
                   </Link>
                 </li>
                 <li className="nav-user-dropdown">
-                  <div className="user-avatar-container">
-                    <FaUserCircle className="user-avatar-icon" />
+                  {/* User avatar/name - clicking this (on desktop) could toggle dropdown */}
+                  <button 
+                    className="user-avatar-container" 
+                    onClick={(e) => { 
+                      // Basic toggle for hover/focus-within driven dropdown
+                      // Or implement JS toggle if preferred for click
+                      if (window.innerWidth > 991) e.currentTarget.focus(); 
+                    }}
+                    aria-haspopup="true"
+                    aria-expanded={false} // This would need state if JS controlled
+                  >
+                    {user?.profile_picture_url ? (
+                        <img src={user.profile_picture_url} alt={user.username} className="user-avatar-image" />
+                        // Add CSS for .user-avatar-image:
+                        // .user-avatar-image { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; margin-right: 5px; }
+                    ) : (
+                        <FaUserCircle className="user-avatar-icon" />
+                    )}
                     <span className="user-name">{user?.username}</span>
-                  </div>
+                  </button>
                   <ul className="dropdown-menu">
-                    <li><Link to="/profile" onClick={closeMobileMenu}>My Profile</Link></li>
-                    <li><Link to="/my-midis" onClick={closeMobileMenu}>My MIDIs</Link></li>
+                    <li><Link to="/profile" onClick={closeMobileMenu}><FaUserCircle style={{marginRight: '8px'}}/> My Profile</Link></li>
+                    <li><Link to="/my-midis" onClick={closeMobileMenu}><FaMusic style={{marginRight: '8px'}}/> My MIDIs</Link></li>
                     <li><button onClick={handleLogout} className="btn-dropdown-logout">
-                        <FaSignOutAlt /> Logout
+                        <FaSignOutAlt style={{marginRight: '8px'}}/> Logout
                     </button></li>
                   </ul>
                 </li>

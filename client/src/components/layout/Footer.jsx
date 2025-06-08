@@ -1,5 +1,6 @@
 // client/src/components/layout/Footer.jsx
 import React from 'react';
+import { Link } from 'react-router-dom'; 
 import '../../assets/css/Footer.css'; // Create this CSS file
 import { FaGithub, FaTwitter, FaEnvelope } from 'react-icons/fa';
 
@@ -35,6 +36,7 @@ const Footer = () => {
             <li><a href="/faq">FAQ</a></li>
             <li><a href="/terms">Terms of Service</a></li>
             <li><a href="/privacy">Privacy Policy</a></li>
+            <li><Link to="/desktop-app"><FaDesktop style={{marginRight: '5px'}}/> Desktop App</Link></li>
             <li><a href="/contact">Contact</a></li>
           </ul>
         </div>

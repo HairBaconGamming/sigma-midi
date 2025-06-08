@@ -1,0 +1,166 @@
+/* client/src/assets/css/DesktopAppPage.css */
+.desktop-app-page-container {
+  max-width: 960px;
+  margin: var(--spacing-xl) auto;
+  padding: var(--spacing-xs) var(--spacing-lg);
+  animation: desktopPageAppear 0.6s var(--transition-timing-function) forwards;
+}
+
+@keyframes desktopPageAppear {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.desktop-app-header {
+  text-align: center;
+  margin-bottom: var(--spacing-xxl);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.desktop-app-header .header-icon {
+  font-size: 4rem;
+  color: var(--color-secondary); /* Use secondary color for desktop app theme */
+  margin-bottom: var(--spacing-md);
+  filter: drop-shadow(0 3px 5px rgba(139, 92, 246, 0.3));
+}
+
+.desktop-app-header h1 {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  color: var(--color-text-light);
+  margin-bottom: var(--spacing-sm);
+}
+
+.desktop-app-header p {
+  font-size: 1.1rem;
+  color: var(--color-text-dark);
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.desktop-app-section {
+  background-color: var(--color-background-medium);
+  padding: var(--spacing-xl);
+  border-radius: var(--border-radius-lg);
+  margin-bottom: var(--spacing-xl);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-border);
+}
+.desktop-app-section:last-child {
+    margin-bottom: 0;
+}
+
+.desktop-app-section h2,
+.desktop-app-section h3 {
+  font-family: var(--font-display);
+  color: var(--color-text-light);
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border-hover);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-weight: 600;
+}
+.desktop-app-section h2 {
+  font-size: 1.75rem;
+}
+.desktop-app-section h3 {
+  font-size: 1.3rem;
+  margin-top: var(--spacing-lg); /* Space above h3 if it's not the first heading */
+}
+.desktop-app-section .icon {
+  color: var(--color-secondary);
+  font-size: 1.2em;
+  margin-right: var(--spacing-xs);
+}
+
+.desktop-app-section ul {
+  list-style: none; /* Remove default bullets */
+  padding-left: 0;
+}
+.desktop-app-section ul li {
+  font-size: 1rem;
+  color: var(--color-text-medium);
+  margin-bottom: var(--spacing-md);
+  padding-left: 1.8em; /* Space for custom bullet/icon */
+  position: relative;
+  line-height: 1.6;
+}
+.desktop-app-section ul li::before {
+  content: '✓'; /* Custom bullet */
+  color: var(--color-primary);
+  font-weight: bold;
+  position: absolute;
+  left: 0;
+  top: 1px; /* Adjust vertical alignment */
+  font-size: 1.1em;
+}
+
+.download-section {
+  text-align: center;
+}
+.btn-download-app {
+  /* Uses global .btn and .btn-primary */
+  padding: var(--spacing-md) var(--spacing-xl) !important;
+  font-size: 1.125rem !important;
+  font-weight: 700 !important;
+  margin-top: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  background: linear-gradient(45deg, var(--color-secondary), var(--color-secondary-hover)) !important;
+  color: var(--color-text-light) !important;
+  border: none !important;
+  min-width: 300px;
+  justify-content: center;
+}
+.btn-download-app .icon {
+  font-size: 1.3em;
+  color: inherit !important; /* Inherit from button text */
+  margin-right: var(--spacing-xs) !important;
+}
+
+.download-note {
+  font-size: 0.875rem;
+  color: var(--color-text-dark);
+  margin-top: var(--spacing-md);
+  line-height: 1.5;
+}
+
+.btn-github-app {
+    margin-top: var(--spacing-sm);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    border-color: var(--color-text-dark) !important;
+    color: var(--color-text-medium) !important;
+}
+.btn-github-app:hover {
+    border-color: var(--color-text-light) !important;
+    color: var(--color-text-light) !important;
+    background-color: var(--color-background-light) !important;
+}
+.btn-github-app .icon {
+    font-size: 1.3em;
+    color: inherit !important;
+}
+
+@media (max-width: 768px) {
+  .desktop-app-page-container {
+    padding: var(--spacing-xs) var(--spacing-md);
+  }
+  .desktop-app-header h1 {
+    font-size: 2rem;
+  }
+  .desktop-app-section {
+    padding: var(--spacing-lg);
+  }
+  .btn-download-app {
+    width: 100%;
+    font-size: 1rem !important;
+  }
+}
