@@ -1,54 +1,132 @@
 // config/db.js
 const mongoose = require('mongoose');
 const crypto = require('crypto');
-const path = 'path'; // Error here: 'path' is a string, not the module. Should be: require('path');
+const path = require('path');
 const { GridFsStorage } = require('multer-gridfs-storage');
-const { Db } = require('mongodb'); // Keep for instanceof check
+// We will try to get the Db class constructor from Mongoose's client
 
 let mongooseConnectionPromise = null;
-let nativeDbForGridFS = null; // Store the native Db instance once available
+let nativeDbForGridFS = null;
+let resolveNativeDbPromise = null;
+let rejectNativeDbPromise = null;
+
+// A promise that resolves once nativeDbForGridFS is set
+const nativeDbReadyPromise = new Promise((resolve, reject) => {
+    resolveNativeDbPromise = resolve;
+    rejectNativeDbPromise = reject; // Store the reject function
+});
 
 const connectDB = () => {
   if (!mongooseConnectionPromise) {
     console.log('[DATABASE] Initiating MongoDB connection...');
     if (!process.env.MONGO_URI) {
-      console.error("[DATABASE FATAL] MONGO_URI is not defined in .env file.");
-      return Promise.reject(new Error("MONGO_URI is not defined."));
+      const errMsg = "[DATABASE FATAL] MONGO_URI is not defined in .env file.";
+      console.error(errMsg);
+      if (rejectNativeDbPromise) rejectNativeDbPromise(new Error(errMsg)); // Reject the GridFS promise
+      return Promise.reject(new Error(errMsg));
     }
-    mongooseConnectionPromise = mongoose.connect(process.env.MONGO_URI)
-      .then(mongooseInstance => {
-        const conn = mongooseInstance.connection;
-        console.log(`[DATABASE] MongoDB Connected: ${conn.host} to database: ${conn.name}`);
-        
-        // Store the native Db instance once connected for GridFS
-        if (conn.db && conn.db instanceof Db) {
-          nativeDbForGridFS = conn.db;
-          console.log('[DATABASE] Native Db instance for GridFS captured.');
+
+    const conn = mongoose.connection;
+
+    conn.on('error', err => {
+      console.error('[DATABASE ERROR] MongoDB connection error:', err);
+      nativeDbForGridFS = null;
+      if (rejectNativeDbPromise) { // Check if reject function exists
+        // Avoid rejecting if promise already settled
+        nativeDbReadyPromise.catch(() => {}).finally(() => rejectNativeDbPromise(err));
+      }
+    });
+
+    conn.on('disconnected', () => {
+      console.warn('[DATABASE WARN] MongoDB disconnected.');
+      nativeDbForGridFS = null;
+    });
+
+    conn.on('reconnected', () => {
+      console.log('[DATABASE] MongoDB reconnected.');
+      try {
+        const dbName = conn.name;
+        if (conn.client && typeof conn.client.db === 'function' && dbName) {
+            const tempDb = conn.client.db(dbName);
+            // Dynamically get the Db class constructor from Mongoose's client
+            const MongodbNativeDbClass = conn.client.constructor.Db || (tempDb && Object.getPrototypeOf(tempDb).constructor);
+
+            if (tempDb && MongodbNativeDbClass && tempDb instanceof MongodbNativeDbClass) {
+                nativeDbForGridFS = tempDb;
+                console.log('[DATABASE] Native Db instance for GridFS RE-CAPTURED after reconnect.');
+                if (resolveNativeDbPromise && nativeDbForGridFS) {
+                    resolveNativeDbPromise(nativeDbForGridFS); // Re-resolve or handle as needed
+                }
+            } else {
+                console.error('[DATABASE] Recaptured conn.client.db() is NOT a valid Db instance after reconnect.');
+            }
         } else {
-          console.error('[DATABASE] Failed to capture native Db instance from Mongoose connection. GridFS might fail.');
+            console.error('[DATABASE] Cannot recapture native Db instance after reconnect (client or dbName missing).');
+        }
+      } catch (e) {
+          console.error('[DATABASE] Error recapturing native Db after reconnect:', e)
+      }
+    });
+
+    conn.once('open', () => {
+      console.log(`[DATABASE] Mongoose connection 'open' event fired. DB Name from conn: ${conn.name}`);
+      try {
+        const dbName = conn.name;
+        if (!dbName) {
+            const errMsg = '[DATABASE] "open" event fired, but conn.name (database name) is missing.';
+            console.error(errMsg);
+            if (rejectNativeDbPromise) rejectNativeDbPromise(new Error(errMsg));
+            return;
         }
 
-        conn.on('error', err => {
-          console.error('[DATABASE ERROR] MongoDB connection error after initial connect:', err);
-          nativeDbForGridFS = null; // Invalidate on error
-        });
-        conn.on('disconnected', () => {
-          console.warn('[DATABASE WARN] MongoDB disconnected.');
-          nativeDbForGridFS = null; // Invalidate on disconnect
-        });
-        conn.on('reconnected', () => {
-          console.log('[DATABASE] MongoDB reconnected.');
-          if (mongoose.connection.db && mongoose.connection.db instanceof Db) {
-             nativeDbForGridFS = mongoose.connection.db; // Recapture on reconnect
-             console.log('[DATABASE] Native Db instance for GridFS recaptured after reconnect.');
+        if (conn.client && typeof conn.client.db === 'function') {
+          const tempDb = conn.client.db(dbName);
+          // Dynamically get the Db class constructor from Mongoose's client
+          // This is crucial because require('mongodb').Db might be a different version/instance
+          const MongodbNativeDbClass = conn.client.constructor.Db || // Ideal path
+                                       (tempDb && Object.getPrototypeOf(tempDb) ? Object.getPrototypeOf(tempDb).constructor : null); // Fallback
+
+          if (tempDb && MongodbNativeDbClass && tempDb instanceof MongodbNativeDbClass) {
+            nativeDbForGridFS = tempDb;
+            console.log('[DATABASE] Native Db instance for GridFS CAPTURED successfully via conn.client.db().');
+            if (resolveNativeDbPromise) {
+              resolveNativeDbPromise(nativeDbForGridFS);
+            }
+          } else {
+            const errMsg = `[DATABASE] "open" event, conn.client.db() did NOT return a valid Db instance according to Mongoose's client's Db class.`;
+            console.error(errMsg, 'tempDb constructor:', tempDb ? tempDb.constructor.name : 'N/A', 'Expected Db constructor:', MongodbNativeDbClass ? MongodbNativeDbClass.name : 'N/A');
+            console.error('Logged tempDb structure (first 1000 chars):', JSON.stringify(tempDb, null, 2).substring(0, 1000) + "...");
+            if (rejectNativeDbPromise) {
+              rejectNativeDbPromise(new Error(errMsg));
+            }
           }
-        });
-        return conn; // Return Mongoose connection object
+        } else {
+          const errMsg = '[DATABASE] "open" event, but conn.client or conn.client.db is not available/valid.';
+          console.error(errMsg, 'conn.client exists:', !!conn.client, 'typeof conn.client.db:', typeof conn.client?.db);
+          if (rejectNativeDbPromise) {
+            rejectNativeDbPromise(new Error(errMsg));
+          }
+        }
+      } catch(e) {
+          const errMsg = '[DATABASE] Exception during "open" event native Db capture: ' + e.message;
+          console.error(errMsg, e);
+          if (rejectNativeDbPromise) {
+            rejectNativeDbPromise(new Error(errMsg));
+          }
+      }
+    });
+
+    mongooseConnectionPromise = mongoose.connect(process.env.MONGO_URI)
+      .then(mongooseInstance => {
+        console.log(`[DATABASE] mongoose.connect() promise resolved. Host: ${mongooseInstance.connection.host}, DB Name: ${mongooseInstance.connection.name}`);
+        // The 'open' event listener above is now primarily responsible for setting nativeDbForGridFS
+        return mongooseInstance.connection;
       })
       .catch(error => {
-        console.error(`[DATABASE FATAL] Could not connect to MongoDB: ${error.message}`);
+        console.error(`[DATABASE FATAL] Could not connect to MongoDB (mongoose.connect catch): ${error.message}`);
         mongooseConnectionPromise = null;
         nativeDbForGridFS = null;
+        if (rejectNativeDbPromise) rejectNativeDbPromise(error);
         throw error;
       });
   }
@@ -57,60 +135,25 @@ const connectDB = () => {
 
 const createGridFsStorage = () => {
   if (!process.env.MONGO_URI) {
-    console.error("[GridFS Storage Config] MONGO_URI not found. GridFS storage will likely fail.");
-    // Return a mock/failing storage instance
+    const errMsg = "[GridFS Storage Config] MONGO_URI not found. GridFS storage cannot be initialized.";
+    console.error(errMsg);
+    // Return a mock storage that will immediately fail, as GridFsStorage constructor expects a db or url
     return { 
-        _handleFile: (req, file, cb) => cb(new Error("MONGO_URI not configured for GridFS")),
+        _handleFile: (req, file, cb) => cb(new Error(errMsg)),
         _removeFile: (req, file, cb) => cb()
     };
   }
 
-  // This promise will resolve to the native Db object for GridFS *after* Mongoose connects.
-  const dbPromiseForGridFS = new Promise((resolve, reject) => {
-    connectDB() // Ensure Mongoose connection is initiated
-      .then(() => {
-        // Wait for nativeDbForGridFS to be set. This might involve a slight delay.
-        // A more robust way might be to emit an event from connectDB when nativeDbForGridFS is ready.
-        // For now, let's try a small timeout or check interval.
-        if (nativeDbForGridFS) {
-          console.log("[GridFS Storage Config] Using pre-captured native Db instance.");
-          resolve(nativeDbForGridFS);
-        } else {
-          // If not immediately available, listen to the 'open' event on the Mongoose connection
-          // This ensures we only proceed once the connection is truly open and db object is available
-          const conn = mongoose.connection;
-          if (conn.readyState === 1 && conn.db && conn.db instanceof Db) { // Already open
-            console.log("[GridFS Storage Config] Mongoose connection already open, using its db object.");
-            nativeDbForGridFS = conn.db; // Ensure it's set
-            resolve(conn.db);
-          } else {
-            console.log("[GridFS Storage Config] Mongoose connection not yet fully open. Waiting for 'open' event...");
-            conn.once('open', () => {
-              if (conn.db && conn.db instanceof Db) {
-                console.log("[GridFS Storage Config] Mongoose 'open' event fired. Using its db object.");
-                nativeDbForGridFS = conn.db; // Ensure it's set
-                resolve(conn.db);
-              } else {
-                const errMsg = "[GridFS Storage Config] Mongoose 'open' event, but Db object is invalid.";
-                console.error(errMsg, conn.db);
-                reject(new Error(errMsg));
-              }
-            });
-            conn.once('error', (err) => { // Also handle error during this waiting period
-                console.error("[GridFS Storage Config] Error on Mongoose connection while waiting for 'open':", err);
-                reject(new Error("Mongoose connection error while waiting for GridFS Db: " + err.message));
-            });
-          }
-        }
-      })
-      .catch(err => {
-        console.error("[GridFS Storage Config] Error from connectDB() while setting up dbPromiseForGridFS:", err);
-        reject(new Error("Failed to connect to DB for GridFS: " + err.message));
-      });
+  // Ensure connectDB is called to initiate connection and set up event listeners
+  connectDB().catch(err => {
+    console.error("[GridFS Storage Config] Initial connectDB() call failed:", err.message);
+    // The nativeDbReadyPromise will likely be rejected by connectDB's error handling
   });
 
+  console.log("[GridFS Storage Config] GridFsStorage configured to wait for nativeDbReadyPromise.");
+
   return new GridFsStorage({
-    db: dbPromiseForGridFS, // Pass the promise that resolves to the Mongoose connection's native db
+    db: nativeDbReadyPromise, // Pass the promise that waits for nativeDbForGridFS to be set
     file: (req, file) => {
       return new Promise((resolve, reject) => {
         crypto.randomBytes(16, (err, buf) => {
@@ -118,10 +161,10 @@ const createGridFsStorage = () => {
             console.error('[GridFS Storage File Fn] Crypto error:', err);
             return reject(err);
           }
-          const filename = buf.toString('hex') + require('path').extname(file.originalname); // Corrected path usage
+          const filename = buf.toString('hex') + path.extname(file.originalname);
           const fileInfo = {
             filename: filename,
-            bucketName: 'uploads',
+            bucketName: 'uploads', // Must match bucketName in server.js GridFSBucket setup
             metadata: {
               originalName: file.originalname,
               uploaderId: req.user ? req.user.id.toString() : null,
@@ -136,4 +179,4 @@ const createGridFsStorage = () => {
   });
 };
 
-module.exports = { connectDB, createGridFsStorage };
+module.exports = { connectDB, createGridFsStorage, nativeDbReadyPromise };
