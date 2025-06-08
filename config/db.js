@@ -2,46 +2,51 @@
 const mongoose = require('mongoose');
 const crypto = require('crypto');
 const path = require('path');
-const Grid = require('gridfs-stream');
 const { GridFsStorage } = require('multer-gridfs-storage');
 
 const connectDB = async () => {
+  // Không cần kiểm tra readyState ở đây nữa, mongoose.connect sẽ tự xử lý hoặc ném lỗi
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      // useCreateIndex: true, // Không còn cần thiết trong Mongoose 6+
-      // useFindAndModify: false, // Không còn cần thiết trong Mongoose 6+
-    });
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
-
-    // Init gfs (GridFS Stream) - Cần thiết cho việc đọc file từ GridFS
-    // let gfs, gridfsBucket;
-    // conn.connection.once('open', () => {
-    //   gridfsBucket = new mongoose.mongo.GridFSBucket(conn.connection.db, {
-    //     bucketName: 'uploads'
-    //   });
-    //   gfs = Grid(conn.connection.db, mongoose.mongo);
-    //   gfs.collection('uploads'); // 'uploads' là tên collection cho GridFS
-    //   console.log('GridFS Initialized.');
-    // });
-    // return { conn, gfs, gridfsBucket }; // Trả về để có thể sử dụng ở nơi khác nếu cần
-
+    const conn = await mongoose.connect(process.env.MONGO_URI, {});
+    console.log(`[DATABASE] MongoDB Connected: ${conn.connection.host} to database: ${conn.connection.name}`);
+    return conn.connection; // Trả về đối tượng connection của Mongoose
   } catch (error) {
-    console.error(`Error connecting to MongoDB: ${error.message}`);
-    process.exit(1); // Thoát khỏi process nếu không kết nối được DB
+    console.error(`[DATABASE ERROR] Error connecting to MongoDB: ${error.message}`);
+    // Ném lỗi để server.js có thể bắt và thoát nếu cần
+    throw error;
   }
 };
 
-
-// Tạo storage engine cho Multer với GridFS
 const createGridFsStorage = () => {
   if (!process.env.MONGO_URI) {
-    throw new Error("MONGO_URI not found in environment variables for GridFS storage.");
+    console.error("[GridFS Storage] MONGO_URI not found in environment variables.");
+    throw new Error("MONGO_URI not found for GridFS storage.");
   }
+
+  // multer-gridfs-storage v5+ có thể lấy db instance từ mongoose.connection
+  // sau khi mongoose đã kết nối.
+  // Nó cũng có thể chấp nhận một promise trả về db instance.
+  const dbPromise = mongoose.connection.readyState === 1
+    ? Promise.resolve(mongoose.connection.db) // Nếu đã kết nối, resolve ngay
+    : new Promise((resolve, reject) => { // Nếu chưa, đợi sự kiện 'open'
+        mongoose.connection.once('open', () => {
+            console.log("[GridFS Storage] MongoDB connection opened, providing Db instance for GridFS.");
+            resolve(mongoose.connection.db);
+        });
+        mongoose.connection.once('error', (err) => {
+            console.error("[GridFS Storage] MongoDB connection error for GridFS:", err);
+            reject(new Error("GridFS DB connection error: " + err.message));
+        });
+        // Kích hoạt kết nối nếu chưa được gọi ở đâu đó
+        if (mongoose.connection.readyState === 0) { // 0 = disconnected
+            console.log("[GridFS Storage] Mongoose connection not initiated, attempting connect via connectDB for GridFS.");
+            connectDB().catch(reject); // Gọi connectDB và reject nếu nó lỗi
+        }
+      });
+
+
   return new GridFsStorage({
-    url: process.env.MONGO_URI,
-    options: { useNewUrlParser: true, useUnifiedTopology: true },
+    db: dbPromise, // Cung cấp db promise
     file: (req, file) => {
       return new Promise((resolve, reject) => {
         crypto.randomBytes(16, (err, buf) => {
@@ -51,11 +56,11 @@ const createGridFsStorage = () => {
           const filename = buf.toString('hex') + path.extname(file.originalname);
           const fileInfo = {
             filename: filename,
-            bucketName: 'uploads', // Phải khớp với tên collection/bucket bạn dùng
-            metadata: { // Thêm metadata tùy chỉnh nếu cần
+            bucketName: 'uploads', // Phải khớp với bucketName khi tạo GridFSBucket
+            metadata: {
                 originalName: file.originalname,
-                uploaderId: req.user ? req.user.id : null, // Gắn uploaderId nếu có user
-                title: req.body.title || 'Untitled', // Lấy title từ body request
+                uploaderId: req.user ? req.user.id : null,
+                title: req.body.title || 'Untitled',
             }
           };
           resolve(fileInfo);
@@ -64,6 +69,5 @@ const createGridFsStorage = () => {
     }
   });
 };
-
 
 module.exports = { connectDB, createGridFsStorage };

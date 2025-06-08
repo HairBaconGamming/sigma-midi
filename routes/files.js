@@ -15,15 +15,16 @@ router.get('/stream/:fileId', async (req, res) => {
     }
 
     const gfs = req.app.get('gfs'); // Lấy gfs từ app instance
-    const gridFSBucket = req.app.get('gridFSBucket'); // Lấy gridFSBucket
+    const gridFSBucket = req.app.get('gridFSBucket'); // Lấy từ app instance
 
-    if (!gfs || !gridFSBucket) {
-      console.error('GridFS not initialized on app instance.');
+    if (!gridFSBucket) { // Kiểm tra quan trọng
+      console.error('GridFSBucket not initialized on app instance.');
       return res.status(500).send('Server error: File streaming service not ready.');
     }
 
     // Tìm file metadata trong fs.files collection
-    const file = await gfs.files.findOne({ _id: new mongoose.Types.ObjectId(fileId) });
+    const filesCollection = mongoose.connection.db.collection('uploads.files'); // Hoặc 'fs.files' nếu bucketName mặc định
+    const file = await filesCollection.findOne({ _id: new mongoose.Types.ObjectId(req.params.fileId) });
 
     if (!file || file.length === 0) {
       return res.status(404).json({ msg: 'No file exists with that ID.' });
@@ -67,7 +68,8 @@ router.get('/info/:fileId', async (req, res) => {
         const gfs = req.app.get('gfs');
         if (!gfs) return res.status(500).send('File service not ready.');
 
-        const file = await gfs.files.findOne({ _id: new mongoose.Types.ObjectId(fileId) });
+        const filesCollection = mongoose.connection.db.collection('uploads.files');
+        const file = await filesCollection.findOne({ _id: new mongoose.Types.ObjectId(req.params.fileId) });
         if (!file || file.length === 0) {
           return res.status(404).json({ msg: 'No file exists with that ID.' });
         }

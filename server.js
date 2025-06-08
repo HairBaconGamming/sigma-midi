@@ -3,45 +3,20 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const mongoose = require('mongoose'); // Thêm Mongoose
-const multer = require('multer'); // Thêm Multer
-const methodOverride = require('method-override'); // Nếu cần
-const Grid = require('gridfs-stream'); // Thêm Grid
+const mongoose = require('mongoose');
 
-const { connectDB, createGridFsStorage } = require('./config/db'); // Import hàm kết nối và storage
+const { connectDB } = require('./config/db'); // Chỉ import connectDB
 const authRoutes = require('./routes/auth');
-const midiRoutes = require('./routes/midis');
-const fileRoutes = require('./routes/files'); 
-// const fileRoutes = require('./routes/files'); // NEW: Route để phục vụ file từ GridFS
+const midiRoutes = require('./routes/midis'); // midiRoutes sẽ tự khởi tạo storage engine
+const fileRoutes = require('./routes/files');
 
 const app = express();
-
-// Kết nối MongoDB
-connectDB();
-
-// Init gfs and gridFSBucket for file streaming
-let gfs, gridFSBucket;
-const conn = mongoose.connection;
-conn.once('open', () => {
-  gridFSBucket = new mongoose.mongo.GridFSBucket(conn.db, {
-    bucketName: 'uploads' // Tên bucket/collection trong GridFS
-  });
-  gfs = Grid(conn.db, mongoose.mongo);
-  gfs.collection('uploads');
-  console.log('GridFS Initialized for file streaming.');
-  // Make gfs and gridFSBucket available to routes
-  app.set('gfs', gfs);
-  app.set('gridFSBucket', gridFSBucket);
-});
-
-
 const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(methodOverride('_method')); // Nếu dùng method override
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -56,9 +31,37 @@ if (process.env.NODE_ENV === 'production' || true) {
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  if (!process.env.MONGO_URI) {
-    console.warn('MONGO_URI is not set in .env file. MongoDB connection will fail.');
+// Hàm để khởi tạo server và các dịch vụ phụ thuộc DB
+async function startServer() {
+  try {
+    await connectDB(); // Đảm bảo kết nối DB hoàn tất trước khi làm gì khác
+
+    // Init gridFSBucket sau khi kết nối MongoDB thành công
+    // mongoose.connection là một singleton, nên có thể truy cập ở đây
+    if (mongoose.connection.readyState === 1) { // 1 = connected
+      const gridFSBucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+        bucketName: 'uploads' // Phải khớp với bucketName trong GridFsStorage
+      });
+      app.set('gridFSBucket', gridFSBucket); // Set cho các route khác dùng
+      console.log('[SERVER] GridFS Bucket Initialized for file streaming.');
+    } else {
+      console.error("[SERVER ERROR] MongoDB connection not ready after connectDB() for GridFS Bucket initialization.");
+      // Có thể quyết định thoát ứng dụng ở đây nếu GridFS là thiết yếu
+      // process.exit(1);
+    }
+
+    app.listen(PORT, () => {
+      console.log(`[SERVER] Server is running on port ${PORT}`);
+      if (!process.env.MONGO_URI) {
+        console.warn('[SERVER WARN] MONGO_URI is not set in .env file. MongoDB connection will fail.');
+      }
+    });
+
+  } catch (error) {
+    console.error("[SERVER ERROR] Failed to start server due to MongoDB connection error:", error);
+    process.exit(1); // Thoát nếu không kết nối được DB khi khởi động
   }
-});
+}
+
+// Bắt đầu server
+startServer();
