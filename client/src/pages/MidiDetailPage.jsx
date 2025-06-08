@@ -5,7 +5,7 @@ import { getMidiById, trackMidiDownload, getMidiFileStreamUrl } from '../service
 import {
   FaDownload, FaPlayCircle, FaPauseCircle, FaUser, FaCalendarAlt, FaInfoCircle,
   FaTachometerAlt, FaMusic, FaEye, FaUserEdit, FaArrowLeft, FaTags, FaGuitar,
-  FaStopwatch, FaStarHalfAlt, FaClipboardList, FaUndo, FaVolumeUp, FaVolumeMute
+  FaStopwatch, FaStarHalfAlt, FaClipboardList, FaUndo
 } from 'react-icons/fa';
 import * as Tone from 'tone';
 import { Midi as ToneMidi } from '@tonejs/midi';
@@ -47,7 +47,6 @@ const MidiDetailPage = () => {
   const [isPianoReady, setIsPianoReady] = useState(false);
   const [playbackTime, setPlaybackTime] = useState(0);
   const [durationTotal, setDurationTotal] = useState(0);
-  const [isMuted, setIsMuted] = useState(false);
   const [playerError, setPlayerError] = useState('');
   const [loadingMessage, setLoadingMessage] = useState('');
 
@@ -269,38 +268,31 @@ const MidiDetailPage = () => {
   };
   
   const handleSeek = async (event) => {
-    // CRITICAL FIX: Access event properties *before* any `await` calls.
-    // React's synthetic event object is reused and its properties are nullified
-    // after the event handler returns, which can happen before an `await` resolves.
     const progressBar = event.currentTarget;
     const offsetX = event.nativeEvent.offsetX;
 
-    // Now, proceed with async operations
     if (!await startToneContext() || !isMidiLoaded || !isPianoReady || durationTotal <= 0) {
       return;
     }
 
-    // Defensive check in case the progress bar isn't rendered for some reason
     if (!progressBar) return;
 
     const clickPosition = (offsetX / progressBar.offsetWidth);
     const newTime = Math.max(0, Math.min(clickPosition * durationTotal, durationTotal));
     
-    setPlaybackTime(newTime); // Update UI immediately
+    setPlaybackTime(newTime); 
 
     const wasPlaying = isPlaying;
     if (wasPlaying) {
-      Tone.Transport.pause(); // Pause before making changes
+      Tone.Transport.pause();
     }
     
-    // Release any notes that might have been playing
     if (pianoRef.current) {
         for (let i = 21; i <= 108; i++) {
             pianoRef.current.keyUp({ midi: i, time: Tone.now() });
         }
     }
     
-    // Seeking requires clearing old events and re-scheduling everything
     Tone.Transport.cancel();
     scheduledEventsRef.current = [];
     if (!scheduleMidiNotes()) {
@@ -309,24 +301,12 @@ const MidiDetailPage = () => {
         return;
     }
     
-    // NOW, set the new time on the transport AFTER notes are scheduled.
     Tone.Transport.seconds = newTime;
     console.log("Seeked. Transport time set to:", formatTime(newTime));
 
     if (wasPlaying) {
-      Tone.Transport.start(); // Resume playback
+      Tone.Transport.start();
     }
-  };
-
-  const toggleMute = async () => {
-    if (!await startToneContext() || !pianoRef.current || !isPianoReady) return;
-
-    const newMuteState = !isMuted;
-    if (pianoRef.current.volume) {
-        pianoRef.current.volume.mute = newMuteState;
-    }
-    setIsMuted(newMuteState);
-    console.log("Mute toggled. New mute state:", newMuteState);
   };
 
   const handleDownload = async () => {
@@ -456,15 +436,6 @@ const MidiDetailPage = () => {
                 <div className="player-progress-bar" style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}></div>
               </div>
               <div className="player-time-display total-time">{formatTime(durationTotal)}</div>
-              <button 
-                onClick={toggleMute} 
-                className="btn-player-action btn-volume" 
-                aria-label={isMuted ? "Unmute" : "Mute"} 
-                disabled={!isPianoReady}
-                title={isMuted ? "Unmute" : "Mute"}
-              >
-                {isMuted ? <FaVolumeMute /> : <FaVolumeUp />}
-              </button>
             </div>
           )}
         </div>
