@@ -60,9 +60,14 @@ const MidiSchema = new mongoose.Schema({
 
 // Text index cho tìm kiếm (MongoDB Atlas Free Tier có thể không hỗ trợ $text search hiệu quả)
 // Cân nhắc dùng regex hoặc Atlas Search nếu cần tìm kiếm nâng cao.
-MidiSchema.index({ title: 'text', artist: 'text', tags: 'text', description: 'text', uploader_username_denormalized: 'text' }); // uploader_username_denormalized cần được thêm nếu muốn search theo tên uploader
-MidiSchema.index({ genre: 1 });
+MidiSchema.index({ title: 'text', artist: 'text', tags: 'text', description: 'text' }); // Giữ text index
+MidiSchema.index({ genre: 1 }); // Giữ lại Schema.index() cho genre
 MidiSchema.index({ uploader: 1 });
+MidiSchema.index({ upload_date: -1 }); // Ví dụ index cho sort theo upload_date
+MidiSchema.index({ views: -1 });
+MidiSchema.index({ downloads: -1 });
+MidiSchema.index({ is_public: 1 });
+MidiSchema.index({ is_featured: 1 });
 
 
 // Middleware để cập nhật last_updated_date
