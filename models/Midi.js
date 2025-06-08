@@ -18,7 +18,7 @@ const MidiSchema = new mongoose.Schema({
     trim: true,
     maxlength: [1000, 'Description cannot be more than 1000 characters'],
   },
-  genre: { type: String, trim: true, index: true },
+  genre: { type: String, trim: true},
   tags: [{ type: String, trim: true, lowercase: true }], // Mảng các tag
   duration_seconds: { type: Number, min: 0 },
   key_signature: { type: String, trim: true },
@@ -45,14 +45,14 @@ const MidiSchema = new mongoose.Schema({
   contentType: { type: String, default: 'audio/midi' }, // MIME type
   size_bytes: { type: Number, default: 0 }, // Kích thước file bằng bytes
 
-  upload_date: { type: Date, default: Date.now, index: true },
+  upload_date: { type: Date, default: Date.now },
   last_updated_date: { type: Date, default: Date.now },
-  views: { type: Number, default: 0, index: true },
-  downloads: { type: Number, default: 0, index: true },
+  views: { type: Number, default: 0 },
+  downloads: { type: Number, default: 0},
   rating_avg: { type: Number, default: 0, min: 0, max: 5 },
   rating_count: { type: Number, default: 0 },
-  is_public: { type: Boolean, default: true, index: true },
-  is_featured: { type: Boolean, default: false, index: true },
+  is_public: { type: Boolean, default: true},
+  is_featured: { type: Boolean, default: false },
   thumbnail_url: { type: String }, // URL đến thumbnail (có thể là file tĩnh hoặc từ dịch vụ khác)
 }, {
   timestamps: { createdAt: 'upload_date', updatedAt: 'last_updated_date' }

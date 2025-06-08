@@ -67,9 +67,4 @@ UserSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-// Index để tìm kiếm username không phân biệt hoa thường (MongoDB hỗ trợ collation)
-UserSchema.index({ username: 1 }, { collation: { locale: 'en', strength: 2 } });
-UserSchema.index({ email: 1 }, { unique: true, sparse: true, collation: { locale: 'en', strength: 2 } });
-
-
 module.exports = mongoose.model('User', UserSchema);
