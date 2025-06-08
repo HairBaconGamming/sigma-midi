@@ -20,7 +20,8 @@
     "tone": "^14.8.49",
     "@tonejs/midi": "^2.0.28",
     "@tonejs/piano": "^0.2.1",
-    "events": "^3.3.0"
+    "events": "^3.3.0",
+    "vite-plugin-node-polyfills": "^0.23.0"
   },
   "devDependencies": {
     "@types/react": "^18.0.27", 
