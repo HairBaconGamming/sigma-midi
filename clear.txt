@@ -1,0 +1,5 @@
+rm -rf node_modules client/node_modules
+git reflog expire --expire=now --all
+git gc --prune=now --aggressive
+rm -rf ./client/node_modules/.vite
+rm -rf ./client/dist

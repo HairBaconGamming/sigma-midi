@@ -1,43 +1,50 @@
+// midi-sharing-webapp/server.js
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const authRoutes = require('./routes/auth');
 const midiRoutes = require('./routes/midis');
+const { connectToServer } = require('./config/dbMongo'); // NEW
 
 const app = express();
-const PORT = process.env.PORT || 3001; // Glitch sẽ set PORT
+const PORT = process.env.PORT || 3001;
 
-// Middleware
-app.use(cors()); // Cho phép CORS từ mọi origin, tùy chỉnh nếu cần bảo mật hơn
-app.use(express.json()); // Parse JSON bodies
-app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
+// Connect to MongoDB and then start the server
+connectToServer((err) => {
+  if (err) {
+    console.error("Failed to connect to MongoDB. Server not started.");
+    return;
+  }
 
-// API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/midis', midiRoutes);
+  // Middleware (sau khi kết nối DB thành công)
+  app.use(cors());
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
 
-// Serve static assets (React build) in production
-if (process.env.NODE_ENV === 'production' || true) { // Glitch thường chạy ở production mode
-  // Set static folder
-  app.use(express.static('client/dist'));
+  // API Routes
+  app.use('/api/auth', authRoutes);
+  app.use('/api/midis', midiRoutes); // midiRoutes sẽ được cập nhật để dùng GridFS
 
-  app.get('*', (req, res) => {
-    res.sendFile(path.resolve(__dirname, 'client', 'dist', 'index.html'));
+  // Serve static assets (React build)
+  if (process.env.NODE_ENV === 'production' || true) {
+    app.use(express.static('client/build'));
+    app.get('*', (req, res) => {
+      res.sendFile(path.resolve(__dirname, 'client', 'build', 'index.html'));
+    });
+  }
+
+  // Không cần thư mục uploads vật lý nữa nếu dùng GridFS
+  // const fs = require('fs');
+  // const uploadsDir = path.join(__dirname, 'uploads');
+  // if (!fs.existsSync(uploadsDir)) {
+  //   fs.mkdirSync(uploadsDir);
+  // }
+  // app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // Route này sẽ bị thay thế
+
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+    console.log(`DATABASE_API_URL (SQLite Meta): ${process.env.DATABASE_API_URL}`);
+    console.log(`MongoDB URI (Files): ${process.env.MONGO_URI ? 'Configured' : 'NOT CONFIGURED'}`);
   });
-}
-
-// Đảm bảo thư mục uploads tồn tại
-const fs = require('fs');
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir);
-}
-// Route để phục vụ file đã upload (cần thiết cho download)
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  console.log(`DATABASE_API_URL: ${process.env.DATABASE_API_URL}`);
 });
