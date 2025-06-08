@@ -2,86 +2,89 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
-// GridFS stream (gfs) và bucket (gridFSBucket) sẽ được lấy từ app.set trong server.js
 
-// @route   GET /api/files/stream/:fileId
-// @desc    Stream/Download a file from GridFS by its File ID (_id in fs.files)
+// @route   GET /api/files/stream/:fileIdOrFilename
+// @desc    Stream/Download a file from GridFS by its File ID (_id) or filename (random hex name)
 // @access  Public
-router.get('/stream/:fileId', async (req, res) => {
+router.get('/stream/:fileIdOrFilename', async (req, res) => {
   try {
-    const fileId = req.params.fileId;
-    if (!mongoose.Types.ObjectId.isValid(fileId)) {
-      return res.status(400).json({ msg: 'Invalid File ID format.' });
-    }
+    const identifier = req.params.fileIdOrFilename;
+    const gridFSBucket = req.app.get('gridFSBucket');
 
-    const gfs = req.app.get('gfs'); // Lấy gfs từ app instance
-    const gridFSBucket = req.app.get('gridFSBucket'); // Lấy từ app instance
-
-    if (!gridFSBucket) { // Kiểm tra quan trọng
-      console.error('GridFSBucket not initialized on app instance.');
+    if (!gridFSBucket) {
+      console.error('[Files Route] GridFSBucket not initialized on app instance.');
       return res.status(500).send('Server error: File streaming service not ready.');
     }
 
-    // Tìm file metadata trong fs.files collection
-    const filesCollection = mongoose.connection.db.collection('uploads.files'); // Hoặc 'fs.files' nếu bucketName mặc định
-    const file = await filesCollection.findOne({ _id: new mongoose.Types.ObjectId(req.params.fileId) });
-
-    if (!file || file.length === 0) {
-      return res.status(404).json({ msg: 'No file exists with that ID.' });
+    let fileCursor;
+    if (mongoose.Types.ObjectId.isValid(identifier)) {
+      fileCursor = gridFSBucket.find({ _id: new mongoose.Types.ObjectId(identifier) });
+    } else {
+      // Nếu không phải ObjectId, coi nó là filename (tên file trong GridFS)
+      fileCursor = gridFSBucket.find({ filename: identifier });
     }
 
-    // Kiểm tra MIME type (chỉ cho phép MIDI)
+    const files = await fileCursor.toArray();
+    if (!files || files.length === 0) {
+      return res.status(404).json({ msg: 'No file exists with that identifier.' });
+    }
+    const file = files[0]; // Lấy file đầu tiên tìm thấy
+
     if (file.contentType === 'audio/midi' || file.contentType === 'audio/mid') {
-      // Thiết lập header cho download hoặc streaming
       res.set('Content-Type', file.contentType);
-      // res.set('Content-Disposition', `attachment; filename="${file.metadata.originalName || file.filename}"`); // Force download
-      res.set('Content-Disposition', `inline; filename="${file.metadata.originalName || file.filename}"`); // Suggest browser to display inline if possible, or download
+      // Sử dụng originalName từ metadata nếu có, nếu không thì filename từ GridFS
+      const downloadFilename = file.metadata?.originalName || file.filename;
+      res.set('Content-Disposition', `inline; filename="${downloadFilename}"`);
+      // res.set('Content-Disposition', `attachment; filename="${downloadFilename}"`); // Để luôn luôn download
 
       const readStream = gridFSBucket.openDownloadStream(file._id);
-      readStream.on('error', (err) => {
-        console.error('GridFS stream error:', err);
-        res.status(500).send('Error streaming file.');
+      readStream.on('error', (streamErr) => {
+        console.error('[Files Route] GridFS stream error:', streamErr);
+        // Tránh gửi response nếu header đã được gửi
+        if (!res.headersSent) {
+            res.status(500).send('Error streaming file.');
+        } else {
+            readStream.destroy(); // Hủy stream nếu lỗi xảy ra giữa chừng
+        }
       });
       readStream.pipe(res);
     } else {
-      res.status(403).json({ msg: 'File type not allowed for streaming.' });
+      res.status(403).json({ msg: `File type '${file.contentType}' not allowed for streaming.` });
     }
   } catch (err) {
-    console.error('Error in /files/stream/:fileId route:', err.message);
-    if (err.name === 'MongoNetworkError' || err.name === 'MongooseServerSelectionError') {
-        return res.status(503).send('Database connection error.');
+    console.error('[Files Route] Error in /stream/:fileIdOrFilename:', err.message);
+    if (!res.headersSent) {
+        if (err.name === 'MongoNetworkError' || err.name === 'MongooseServerSelectionError') {
+            return res.status(503).send('Database connection error.');
+        }
+        res.status(500).send('Internal Server Error');
     }
-    res.status(500).send('Internal Server Error');
   }
 });
 
-
-// @route   GET /api/files/info/:fileId
-// @desc    Get file metadata from GridFS by File ID
+// @route   GET /api/files/info/:fileIdOrFilename
+// @desc    Get file metadata from GridFS by File ID or filename
 // @access  Public (or Private if needed)
-router.get('/info/:fileId', async (req, res) => {
+router.get('/info/:fileIdOrFilename', async (req, res) => {
     try {
-        const fileId = req.params.fileId;
-        if (!mongoose.Types.ObjectId.isValid(fileId)) {
-          return res.status(400).json({ msg: 'Invalid File ID format.' });
+        const identifier = req.params.fileIdOrFilename;
+        const filesCollection = mongoose.connection.db.collection('uploads.files'); // Hoặc 'fs.files'
+        
+        let file;
+        if (mongoose.Types.ObjectId.isValid(identifier)) {
+          file = await filesCollection.findOne({ _id: new mongoose.Types.ObjectId(identifier) });
+        } else {
+          file = await filesCollection.findOne({ filename: identifier });
         }
-        const gfs = req.app.get('gfs');
-        if (!gfs) return res.status(500).send('File service not ready.');
 
-        const filesCollection = mongoose.connection.db.collection('uploads.files');
-        const file = await filesCollection.findOne({ _id: new mongoose.Types.ObjectId(req.params.fileId) });
-        if (!file || file.length === 0) {
-          return res.status(404).json({ msg: 'No file exists with that ID.' });
+        if (!file) {
+          return res.status(404).json({ msg: 'No file metadata exists with that identifier.' });
         }
-        res.json(file); // Trả về toàn bộ metadata của file từ fs.files
+        res.json(file);
     } catch (err) {
-        console.error('Error in /files/info/:fileId route:', err.message);
+        console.error('[Files Route] Error in /info/:fileIdOrFilename:', err.message);
         res.status(500).send('Internal Server Error');
     }
 });
-
-
-// Optional: Route to delete a file from GridFS by fileId (should be protected)
-// router.delete('/:fileId', authMiddleware, async (req, res) => { ... });
 
 module.exports = router;

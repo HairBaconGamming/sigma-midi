@@ -8,106 +8,129 @@ const authMiddleware = require('../middleware/authMiddleware');
 const Midi = require('../models/Midi'); // Import Midi model
 const User = require('../models/User'); // Import User model (nếu cần populate)
 
-// Khởi tạo GridFS storage engine
+// Khởi tạo GridFS storage engine MỘT LẦN khi module này được load
+// createGridFsStorage() trả về một instance của GridFsStorage
 const storage = createGridFsStorage();
+
 const upload = multer({
-  storage,
-  limits: { fileSize: 15 * 1024 * 1024 }, // Giới hạn 15MB
+  storage, // Sử dụng storage engine đã khởi tạo
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB
   fileFilter: function (req, file, cb) {
     if (file.mimetype === 'audio/midi' || file.mimetype === 'audio/mid' || file.originalname.match(/\.(mid|midi)$/i)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only MIDI files (.mid, .midi) are allowed.'), false);
+      // cb(new Error('Invalid file type...'), false) sẽ truyền lỗi cho error handler của multer
+      // Để trả về JSON error, chúng ta có thể dùng req.fileFilterError
+      req.fileFilterError = 'Invalid file type. Only MIDI files (.mid, .midi) are allowed.';
+      cb(null, false);
     }
   }
 });
+
+// Middleware để xử lý lỗi từ fileFilter của Multer
+const handleMulterFileFilterError = (req, res, next) => {
+    if (req.fileFilterError) {
+        return res.status(400).json({ msg: req.fileFilterError });
+    }
+    next();
+};
 
 
 // @route   POST api/midis/upload
 // @desc    Upload a MIDI file and save its metadata
 // @access  Private
-router.post('/upload', authMiddleware, upload.single('midiFile'), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ msg: 'No MIDI file uploaded.' });
-  }
-  if (!req.body.title) {
-    // Nếu thiếu title, cần xóa file đã upload lên GridFS
-    const gfs = req.app.get('gfs');
-    if (gfs && req.file.id) {
-        try {
-            await gfs.files.deleteOne({ _id: new mongoose.Types.ObjectId(req.file.id) });
-            // Also need to delete chunks if using older gridfs-stream
-            const gridFSBucket = req.app.get('gridFSBucket');
-            if (gridFSBucket) {
-                gridFSBucket.delete(new mongoose.Types.ObjectId(req.file.id));
+router.post('/upload', authMiddleware, (req, res, next) => {
+    // Gọi middleware của multer một cách thủ công để có thể xử lý lỗi tốt hơn
+    upload.single('midiFile')(req, res, async (err) => {
+        if (err instanceof multer.MulterError) {
+            // Lỗi từ Multer (ví dụ: file quá lớn)
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ msg: 'File too large. Maximum size is 15MB.' });
             }
-        } catch (deleteErr) {
-            console.error("Error deleting orphaned GridFS file:", deleteErr);
+            return res.status(400).json({ msg: `Multer error: ${err.message}` });
+        } else if (err) {
+            // Lỗi khác (ví dụ từ GridFSStorage file function, hoặc fileFilter ném Error)
+            console.error("Unknown error during multer processing or GridFSStorage file function:", err);
+            return res.status(500).json({ msg: `File upload processing error: ${err.message}` });
         }
-    }
-    return res.status(400).json({ msg: 'Title is required.' });
-  }
 
-  const { title, artist, description, genre, tags, duration_seconds, key_signature, time_signature,
-          difficulty, instrumentation, arrangement_by, bpm, is_public, thumbnail_url } = req.body;
+        // Kiểm tra lỗi từ fileFilter (nếu có)
+        if (req.fileFilterError) {
+            return res.status(400).json({ msg: req.fileFilterError });
+        }
 
-  try {
-    const newMidi = new Midi({
-      title,
-      artist,
-      description,
-      genre,
-      tags: tags ? tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [], // Xử lý tags
-      duration_seconds,
-      key_signature,
-      time_signature,
-      difficulty,
-      instrumentation,
-      arrangement_by,
-      bpm,
-      uploader: req.user.id, // ID của user từ token
-      // Thông tin file từ GridFS (req.file được cung cấp bởi multer-gridfs-storage)
-      fileId: req.file.id, // ID của file trong GridFS chunks
-      filenameGridFs: req.file.filename, // Tên file trong GridFS (thường là random hex)
-      original_filename: req.file.originalname,
-      contentType: req.file.contentType,
-      size_bytes: req.file.size,
-      is_public: is_public !== undefined ? (is_public === 'true' || is_public === true || is_public === '1') : true,
-      thumbnail_url
-    });
-
-    const savedMidi = await newMidi.save();
-
-    // Populate uploader info before sending response
-    const populatedMidi = await Midi.findById(savedMidi._id).populate('uploader', 'username profile_picture_url');
-
-    res.status(201).json({
-      msg: 'MIDI uploaded and metadata saved successfully.',
-      midi: populatedMidi,
-      // file_path không còn lưu trực tiếp ở đây, client sẽ dùng /api/files/stream/:fileId
-    });
-
-  } catch (err) {
-    console.error("Error saving MIDI metadata:", err.message);
-    // Nếu lỗi khi lưu metadata, xóa file đã upload lên GridFS
-    const gfs = req.app.get('gfs');
-     if (gfs && req.file && req.file.id) {
-        try {
-            await gfs.files.deleteOne({ _id: new mongoose.Types.ObjectId(req.file.id) });
+        if (!req.file) {
+            return res.status(400).json({ msg: 'No MIDI file uploaded or file was rejected.' });
+        }
+        if (!req.body.title) {
+            // Nếu thiếu title, cần xóa file đã upload lên GridFS
             const gridFSBucket = req.app.get('gridFSBucket');
-            if (gridFSBucket) {
-                gridFSBucket.delete(new mongoose.Types.ObjectId(req.file.id));
+            if (gridFSBucket && req.file.id) {
+                try {
+                    await gridFSBucket.delete(new mongoose.Types.ObjectId(req.file.id));
+                    console.log(`[Upload Route] Deleted orphaned GridFS file ID: ${req.file.id} due to missing title.`);
+                } catch (deleteErr) {
+                    console.error("[Upload Route] Error deleting orphaned GridFS file:", deleteErr);
+                }
             }
-        } catch (deleteErr) {
-            console.error("Error deleting GridFS file after metadata save failure:", deleteErr);
+            return res.status(400).json({ msg: 'Title is required.' });
         }
-    }
-    if (err.name === 'ValidationError') {
-        const messages = Object.values(err.errors).map(val => val.message);
-        return res.status(400).json({ msg: messages.join(', ') });
-    }
-    res.status(500).json({ msg: 'Server error while saving MIDI metadata.' });
-  }
+
+        // req.file bây giờ chứa thông tin file từ GridFS (bao gồm id, filename, contentType, size, metadata)
+        const { title, artist, description, genre, tags, duration_seconds, key_signature, time_signature,
+                difficulty, instrumentation, arrangement_by, bpm, is_public, thumbnail_url } = req.body;
+
+        try {
+            const newMidi = new Midi({
+                title,
+                artist,
+                description,
+                genre,
+                tags: tags ? tags.split(',').map(tag => tag.trim().toLowerCase()).filter(tag => tag) : [],
+                duration_seconds: duration_seconds ? parseInt(duration_seconds) : undefined,
+                key_signature,
+                time_signature,
+                difficulty: difficulty ? parseInt(difficulty) : undefined,
+                instrumentation,
+                arrangement_by,
+                bpm: bpm ? parseInt(bpm) : undefined,
+                uploader: req.user.id,
+                // Thông tin file từ GridFS
+                fileId: req.file.id, // Đây là _id của file trong fs.files (hoặc uploads.files)
+                filenameGridFs: req.file.filename, // Tên file được tạo bởi GridFsStorage
+                original_filename: req.file.metadata.originalName, // Lấy từ metadata đã set trong GridFsStorage
+                contentType: req.file.contentType,
+                size_bytes: req.file.size,
+                is_public: is_public !== undefined ? (String(is_public).toLowerCase() === 'true' || is_public === true || is_public === '1') : true,
+                thumbnail_url
+            });
+
+            const savedMidi = await newMidi.save();
+            const populatedMidi = await Midi.findById(savedMidi._id).populate('uploader', 'username profile_picture_url');
+
+            res.status(201).json({
+                msg: 'MIDI uploaded and metadata saved successfully.',
+                midi: populatedMidi,
+            });
+
+        } catch (err) {
+            console.error("Error saving MIDI metadata after GridFS upload:", err.message);
+            const gridFSBucket = req.app.get('gridFSBucket');
+            if (gridFSBucket && req.file && req.file.id) {
+                try {
+                    await gridFSBucket.delete(new mongoose.Types.ObjectId(req.file.id));
+                    console.log(`[Upload Route] Rolled back GridFS file ID: ${req.file.id} due to metadata save failure.`);
+                } catch (deleteErr) {
+                    console.error("[Upload Route] Error rolling back GridFS file:", deleteErr);
+                }
+            }
+            if (err.name === 'ValidationError') {
+                const messages = Object.values(err.errors).map(val => val.message);
+                return res.status(400).json({ msg: messages.join(', ') });
+            }
+            res.status(500).json({ msg: 'Server error while saving MIDI metadata.' });
+        }
+    });
 });
 
 
@@ -144,8 +167,13 @@ router.get('/', async (req, res) => {
       }
     }
 
-    if (uploaderId) {
-      query.uploader = uploaderId;
+    if (req.query.uploaderId) {
+        if (mongoose.Types.ObjectId.isValid(req.query.uploaderId)) {
+            query.uploader = new mongoose.Types.ObjectId(req.query.uploaderId);
+        } else {
+            // Handle invalid uploaderId, maybe return empty or error
+            return res.json({ midis: [], totalItems: 0, totalPages: 0, currentPage: 1, itemsPerPage: limit });
+        }
     }
     if (genre) {
       query.genre = new RegExp(`^${genre}$`, 'i'); // Exact match case-insensitive
