@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const User = require('../models/User'); // Import User model
+const Midi = require('../models/Midi');
 const authMiddleware = require('../middleware/authMiddleware'); // Giữ nguyên middleware này
 
 // @route   POST api/auth/register
@@ -193,5 +194,86 @@ router.put('/me/profile', authMiddleware, async (req, res) => {
     }
 });
 
+// @route   GET api/auth/leaderboard
+// @desc    Get user leaderboard data
+// @access  Public
+router.get('/leaderboard', async (req, res) => {
+  try {
+    const { sortBy = 'uploads', limit = 25 } = req.query; // Default: top 25 by uploads
+    const parsedLimit = parseInt(limit, 10) || 25;
+
+    let leaderboardData = [];
+
+    if (sortBy === 'uploads') {
+      leaderboardData = await User.aggregate([
+        {
+          $lookup: { // Join với collection midis
+            from: 'midis', // Tên collection của Midi model (thường là số nhiều, lowercase)
+            localField: '_id', // Trường trong User model
+            foreignField: 'uploader', // Trường trong Midi model
+            as: 'uploadedMidis' // Tên mảng kết quả join
+          }
+        },
+        {
+          $project: { // Chọn các trường cần thiết và tính toán
+            username: 1,
+            profile_picture_url: 1,
+            registration_date: 1,
+            totalUploads: { $size: '$uploadedMidis' }, // Đếm số lượng MIDI đã upload
+            // Thêm các trường khác nếu muốn hiển thị
+          }
+        },
+        { $sort: { totalUploads: -1 } }, // Sắp xếp giảm dần theo totalUploads
+        { $limit: parsedLimit }
+      ]);
+    } else if (sortBy === 'views' || sortBy === 'downloads') {
+      const sortField = sortBy === 'views' ? '$totalViews' : '$totalDownloads';
+      leaderboardData = await Midi.aggregate([
+        {
+            $match: { is_public: true } // Chỉ tính MIDI public
+        },
+        {
+          $group: { // Nhóm theo uploader
+            _id: '$uploader', // uploader ID
+            totalViews: { $sum: '$views' },
+            totalDownloads: { $sum: '$downloads' },
+            totalMidis: { $sum: 1 } // Đếm số MIDI của user này (để lấy thông tin user sau)
+          }
+        },
+        {
+          $lookup: { // Join với User collection để lấy username, profile_picture_url
+            from: 'users',
+            localField: '_id',
+            foreignField: '_id',
+            as: 'uploaderInfo'
+          }
+        },
+        { $unwind: '$uploaderInfo' }, // Deconstructs the uploaderInfo array
+        {
+          $project: {
+            _id: 0, // Bỏ _id (là uploaderId) của group stage
+            userId: '$uploaderInfo._id',
+            username: '$uploaderInfo.username',
+            profile_picture_url: '$uploaderInfo.profile_picture_url',
+            registration_date: '$uploaderInfo.registration_date',
+            totalViews: 1,
+            totalDownloads: 1,
+            totalMidis: 1 // Số MIDI public của user này
+          }
+        },
+        { $sort: { [sortField.substring(1)]: -1 } }, // Sắp xếp theo views hoặc downloads
+        { $limit: parsedLimit }
+      ]);
+    } else {
+        return res.status(400).json({ msg: 'Invalid sortBy parameter for leaderboard.' });
+    }
+
+    res.json(leaderboardData);
+
+  } catch (err) {
+    console.error("Error fetching leaderboard:", err.message);
+    res.status(500).send('Server Error');
+  }
+});
 
 module.exports = router;

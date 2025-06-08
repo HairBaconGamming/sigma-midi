@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getAllMidis } from '../services/apiMidis'; // Assuming this can filter by uploader_id
 import MidiCard from '../components/midis/MidiCard';
-// import '../assets/css/MyMidisPage.css'; // Tạo file CSS này sau
+import '../assets/css/MyMidisPage.css'; // Tạo file CSS này sau
 import { FaMusic, FaPlusCircle } from 'react-icons/fa';
 
 

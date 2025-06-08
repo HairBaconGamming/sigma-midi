@@ -5,8 +5,8 @@ import { getMidiById, trackMidiDownload, getMidiFileStreamUrl } from '../service
 import { FaDownload, FaPlayCircle, FaPauseCircle, FaUser, FaCalendarAlt, FaInfoCircle, FaTachometerAlt, FaMusic, FaEye, FaUserEdit, FaArrowLeft, FaTags, FaGuitar, FaStopwatch, FaStarHalfAlt, FaClipboardList, FaShareAlt, FaHeart, FaRegHeart } from 'react-icons/fa'; // Added more icons
 // import * as Tone from 'tone'; // Uncomment if using Tone.js
 // import { Midi as ToneMidi } from '@tonejs/midi'; // Uncomment if using Tone.js
-import '../../assets/css/MidiDetailPage.css'; // Ensure this CSS file is created and styled
-import { useAuth } from '../../contexts/AuthContext'; // For potential user-specific actions
+import '../assets/css/MidiDetailPage.css'; // Ensure this CSS file is created and styled
+import { useAuth } from '../contexts/AuthContext'; // For potential user-specific actions
 
 const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
