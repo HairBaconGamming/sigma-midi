@@ -1,390 +1,398 @@
 /* client/src/assets/css/MiniPlayerBar.css */
+
+/* Define key properties for easy theming and consistency */
+:root {
+  --player-height: 72px;
+  --player-bg: rgba(28, 28, 32, 0.75); /* Semi-transparent dark background */
+  --player-border: rgba(255, 255, 255, 0.1);
+  --player-shadow: 0 -4px 30px rgba(0, 0, 0, 0.2);
+  --player-backdrop-blur: 16px;
+
+  --control-color: var(--color-text-dark);
+  --control-color-hover: var(--color-text-light);
+  --control-primary-glow: 0 0 10px var(--color-primary-light);
+
+  --progress-track-bg: rgba(255, 255, 255, 0.1);
+  --progress-thumb-size: 14px;
+
+  --slider-track-bg: rgba(255, 255, 255, 0.2);
+  --slider-thumb-bg: #ffffff;
+  --slider-thumb-size: 14px;
+}
+
+/* --- Main Bar Structure --- */
 .mini-player-bar {
   position: fixed;
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 70px; /* Adjust height as needed */
-  background-color: var(--color-background-medium); /* Darker than main player perhaps */
-  border-top: 1px solid var(--color-border);
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+  height: var(--player-height);
+  background-color: var(--player-bg);
+  
+  /* The Glassmorphism Effect */
+  backdrop-filter: blur(var(--player-backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--player-backdrop-blur)); /* Safari support */
+  border-top: 1px solid var(--player-border);
+  box-shadow: var(--player-shadow);
+  
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--spacing-lg);
-  color: var(--color-text-light);
-  z-index: 1010; /* Above most content, below modals if any */
+  z-index: 1010;
   transform: translateY(100%);
-  transition: transform 0.3s ease-in-out;
+  transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); /* Smoother bounce-out effect */
 }
 
 .mini-player-bar.visible {
   transform: translateY(0%);
 }
 
+/* --- Loading / Error States --- */
 .player-loading-indicator,
 .player-error-indicator {
-  width: 100%;
-  text-align: center;
-  padding: var(--spacing-md);
-  font-size: 0.9rem;
-}
-.player-error-indicator {
-  color: var(--color-error);
   display: flex;
   justify-content: center;
   align-items: center;
   gap: var(--spacing-md);
+  width: 100%;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--color-text-medium);
+}
+.player-error-indicator {
+  color: var(--color-error);
 }
 .player-close-btn-error {
-    background: none;
-    border: none;
-    color: var(--color-text-dark);
-    cursor: pointer;
-    padding: var(--spacing-xs);
+  background: none;
+  border: none;
+  color: var(--color-text-medium);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  border-radius: 50%;
+  transition: all 0.2s ease;
 }
 .player-close-btn-error:hover {
-    color: var(--color-error);
+  color: var(--color-text-light);
+  background-color: var(--color-error-hover);
 }
 
-
+/* --- Track Info Section (Left) --- */
 .mini-player-track-info {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  flex-shrink: 0;
-  min-width: 150px; /* Prevent excessive shrinking */
-  max-width: 30%; /* Adjust as needed, e.g., 25% or 300px */
-  overflow: hidden; /* Ensure content within doesn't break layout */
+  gap: var(--spacing-md);
+  flex: 1; /* Give it space */
+  min-width: 0; /* Important for flex truncation */
+  max-width: 30%;
 }
+/* Thumbnail can be added back here if desired */
 
 .mini-player-text {
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* For text truncation */
+  overflow: hidden;
 }
-
 .mini-player-text .track-title {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: var(--color-text-light);
+  text-decoration: none;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-decoration: none;
+  transition: color 0.2s ease;
 }
 .mini-player-text .track-title:hover {
   color: var(--color-primary);
 }
-
 .mini-player-text .track-artist {
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   color: var(--color-text-dark);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+/* --- Main Controls Section (Center) --- */
 .mini-player-controls-main {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  /* margin: 0 var(--spacing-md); /* Add some margin if it feels too close to track info or progress */
+  gap: var(--spacing-md);
+  flex-shrink: 0;
 }
-
 .mini-player-bar .control-btn {
   background: none;
   border: none;
-  color: var(--color-text-medium);
-  font-size: 1.2rem; /* Default icon size */
-  padding: var(--spacing-xs);
+  color: var(--control-color);
+  font-size: 1.4rem;
+  padding: var(--spacing-sm);
   cursor: pointer;
-  transition: color 0.2s ease, transform 0.1s ease;
-  display: inline-flex; /* For centering icon */
-  align-items: center;
-  justify-content: center;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  border-radius: 50%;
 }
 .mini-player-bar .control-btn:hover {
-  color: var(--color-text-light);
+  color: var(--control-color-hover);
+  background-color: rgba(255, 255, 255, 0.1);
 }
 .mini-player-bar .control-btn:active {
-  transform: scale(0.9);
+  transform: scale(0.92);
+  transition-duration: 0.1s;
 }
-
 .mini-player-bar .control-btn.play-pause-btn {
-  font-size: 1.6rem; /* Larger play/pause */
-  padding: var(--spacing-xs) var(--spacing-sm); /* Adjust padding for larger icon */
-  border: 1px solid var(--color-border);
-  border-radius: 50%;
-  width: 40px; /* Explicit size for circle */
-  height: 40px;
+  font-size: 2.2rem;
+  width: 52px;
+  height: 52px;
+  background-color: var(--color-primary);
+  color: var(--color-background-dark);
+  box-shadow: var(--control-primary-glow);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .mini-player-bar .control-btn.play-pause-btn:hover {
-  color: var(--color-primary);
-  border-color: var(--color-primary);
+  background-color: var(--color-primary-hover);
+  transform: scale(1.05);
+  box-shadow: 0 0 15px var(--color-primary-light);
+}
+.mini-player-bar .control-btn.play-pause-btn:active {
+  transform: scale(0.98);
 }
 
+
+/* --- Progress Bar Section --- */
 .mini-player-progress-section {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  flex-grow: 1; /* Takes up available space */
-  margin: 0 var(--spacing-lg); /* More margin around progress */
-  min-width: 150px; /* Ensure it doesn't get too small */
-  max-width: 40%; /* Limit max width if needed */
+  gap: var(--spacing-md);
+  flex: 1.5; /* Give it more space than track info */
+  margin: 0 var(--spacing-lg);
+  min-width: 150px;
 }
 
 .mini-player-progress-section .time-current,
 .mini-player-progress-section .time-duration {
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   color: var(--color-text-dark);
-  min-width: 35px; /* "0:00" */
+  min-width: 40px;
   text-align: center;
-  font-variant-numeric: tabular-nums; /* Keep numbers aligned */
+  font-variant-numeric: tabular-nums;
 }
 
 .progress-bar-container-mini {
+  --track-height: 5px;
   flex-grow: 1;
-  height: 6px; /* Slimmer progress bar */
-  background-color: var(--color-background-light);
+  height: var(--track-height);
+  background-color: var(--progress-track-bg);
   border-radius: var(--border-radius-full);
   cursor: pointer;
-  overflow: hidden; /* Clip the inner bar */
-  position: relative; /* For potential hover effects or tooltips */
+  position: relative;
+  transition: all 0.2s ease;
 }
-.progress-bar-container-mini:hover .progress-bar-mini {
-    background-color: var(--color-primary-hover); /* Slightly change color on hover */
+.progress-bar-container-mini:hover {
+  --track-height: 8px; /* Grow on hover for easier targeting */
 }
-
-
 .progress-bar-mini {
   height: 100%;
   background-color: var(--color-primary);
   border-radius: var(--border-radius-full);
-  /* transition: width 0.1s linear; */ /* REMOVED for smoother rAF updates */
+  position: relative;
+  transition: background-color 0.2s;
+}
+.progress-bar-container-mini:hover .progress-bar-mini {
+    background-color: var(--color-primary-hover);
+}
+/* Thumb for progress bar */
+.progress-bar-mini::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translate(50%, -50%);
+  width: var(--progress-thumb-size);
+  height: var(--progress-thumb-size);
+  background-color: var(--slider-thumb-bg);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  box-shadow: 0 0 5px rgba(0,0,0,0.5);
+}
+.progress-bar-container-mini:hover .progress-bar-mini::after {
+  opacity: 1;
 }
 
+
+/* --- Extra Actions Section (Right) --- */
 .mini-player-actions-extra {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm); /* Reduced gap for more controls */
+  gap: var(--spacing-sm);
+  flex: 1;
+  justify-content: flex-end;
+  min-width: 0;
+}
+.mini-player-actions-extra .control-btn {
+  font-size: 1.2rem; /* Smaller icons for secondary actions */
 }
 
+/* Volume Control */
 .volume-control-container {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
+  gap: var(--spacing-sm);
 }
-
-.volume-icon-btn { /* Specific for the icon part of volume control */
-  font-size: 1.1rem !important; /* Override general .control-btn if needed */
-}
-
 .volume-slider {
-  width: 80px; /* Adjust as needed */
-  height: 5px;
+  width: 90px;
   -webkit-appearance: none;
   appearance: none;
-  background: var(--color-background-light);
-  border-radius: var(--border-radius-full);
+  background: transparent; /* Track is handled by container */
   cursor: pointer;
   outline: none;
-  transition: opacity 0.2s;
-  margin: 0; /* Reset margin if any from global input styles */
-  padding: 0; /* Reset padding */
-  border: none; /* Reset border */
+  margin: 0;
+  padding: 0;
 }
-.volume-slider:hover {
-  opacity: 0.8;
+.volume-slider::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 4px;
+  background: var(--slider-track-bg);
+  border-radius: var(--border-radius-full);
 }
 .volume-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  appearance: none;
-  width: 14px;
-  height: 14px;
-  background: var(--color-primary);
+  margin-top: -5px; /* (track-height - thumb-height) / 2 */
+  width: var(--slider-thumb-size);
+  height: var(--slider-thumb-size);
+  background: var(--slider-thumb-bg);
   border-radius: 50%;
-  cursor: pointer;
-  border: 2px solid var(--color-background-medium); /* Make thumb stand out */
-  box-shadow: var(--shadow-sm);
-  margin-top: -4.5px; /* Vertically center thumb on track */
+  border: none;
+  box-shadow: 0 0 5px rgba(0,0,0,0.3);
+  transition: transform 0.2s ease;
+}
+.volume-slider:hover::-webkit-slider-thumb {
+  transform: scale(1.1);
+}
+/* Same for Mozilla */
+.volume-slider::-moz-range-track {
+  width: 100%; height: 4px; background: var(--slider-track-bg); border-radius: var(--border-radius-full);
 }
 .volume-slider::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
-  background: var(--color-primary);
-  border-radius: 50%;
-  cursor: pointer;
-  border: 2px solid var(--color-background-medium);
-  box-shadow: var(--shadow-sm);
+  width: var(--slider-thumb-size); height: var(--slider-thumb-size); background: var(--slider-thumb-bg); border-radius: 50%; border: none; box-shadow: 0 0 5px rgba(0,0,0,0.3);
 }
 
-.settings-container {
-  position: relative; /* For dropdown positioning */
-}
+/* --- Settings Dropdown --- */
+.settings-container { position: relative; }
 
-.settings-btn {
-  font-size: 1.1rem !important;
-}
-.settings-btn.active, .settings-btn:focus { /* Highlight when active or focused */
-    color: var(--color-primary);
-}
+.settings-btn.active { color: var(--color-primary); }
 
 .settings-dropdown {
   position: absolute;
-  bottom: calc(100% + var(--spacing-sm)); /* Position above the button */
+  bottom: calc(100% + var(--spacing-md));
   right: 0;
-  background-color: var(--color-background-medium);
-  border: 1px solid var(--color-border);
+  background-color: var(--player-bg);
+  backdrop-filter: blur(var(--player-backdrop-blur));
+  -webkit-backdrop-filter: blur(var(--player-backdrop-blur));
+  border: 1px solid var(--player-border);
   border-radius: var(--border-radius-md);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.25);
   padding: var(--spacing-sm);
-  z-index: 10; /* Above other player bar elements */
-  min-width: 180px;
+  z-index: 10;
+  min-width: 200px;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-xs);
   animation: dropdownFadeInMiniPlayer 0.2s ease-out;
   transform-origin: bottom right;
 }
-
 @keyframes dropdownFadeInMiniPlayer {
-  from { opacity: 0; transform: translateY(5px) scale(0.95); }
+  from { opacity: 0; transform: translateY(10px) scale(0.95); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
-
 .settings-dropdown label {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: var(--spacing-sm);
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   color: var(--color-text-medium);
   cursor: pointer;
-  padding: var(--spacing-xs) var(--spacing-sm);
+  padding: var(--spacing-sm);
   border-radius: var(--border-radius-sm);
-  transition: background-color 0.2s ease, color 0.2s ease;
-  user-select: none; /* Prevent text selection on click */
+  transition: background-color 0.2s ease;
+  user-select: none;
 }
 .settings-dropdown label:hover {
-  background-color: var(--color-background-light);
+  background-color: rgba(255, 255, 255, 0.05);
   color: var(--color-text-light);
 }
+
+/* Custom "Switch" Style Checkbox */
 .settings-dropdown input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--color-primary); /* Modern way to color checkbox */
-  margin-right: var(--spacing-xs); /* Space between checkbox and icon */
+  height: 0; width: 0; visibility: hidden;
+}
+.settings-dropdown .toggle-switch {
   cursor: pointer;
-  /* Resetting default styles for better cross-browser consistency if needed */
-  appearance: none;
-  -webkit-appearance: none;
-  background-color: var(--color-background-input);
-  border: 1.5px solid var(--color-border);
-  border-radius: var(--border-radius-sm);
+  text-indent: -9999px;
+  width: 36px; height: 20px;
+  background: var(--color-background-input);
+  display: block;
+  border-radius: 100px;
   position: relative;
-  vertical-align: middle;
-  transition: background-color 0.2s, border-color 0.2s;
+  transition: background-color 0.2s ease;
 }
-.settings-dropdown input[type="checkbox"]:checked {
-  background-color: var(--color-primary);
-  border-color: var(--color-primary-hover);
-}
-.settings-dropdown input[type="checkbox"]:checked::before { /* Custom checkmark */
-  content: '✓';
-  font-size: 12px;
-  color: var(--color-background-dark);
+.settings-dropdown .toggle-switch::after {
+  content: '';
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-weight: bold;
+  top: 2px; left: 2px;
+  width: 16px; height: 16px;
+  background: #fff;
+  border-radius: 90px;
+  transition: 0.2s;
 }
-.settings-dropdown input[type="checkbox"]:focus-visible {
-  outline: 2px solid var(--color-primary-light);
-  outline-offset: 1px;
+.settings-dropdown input:checked + .toggle-switch {
+  background: var(--color-primary);
 }
-
-
-.settings-dropdown label svg {
-    font-size: 1rem;
-    color: var(--color-text-dark);
-    transition: color 0.2s ease;
-}
-.settings-dropdown label:hover svg {
-    color: var(--color-primary);
+.settings-dropdown input:checked + .toggle-switch::after {
+  left: calc(100% - 2px);
+  transform: translateX(-100%);
 }
 
-.mini-player-bar .close-player-btn {
-    font-size: 1rem !important;
+.settings-dropdown .label-text {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
 }
 
-
-@media (max-width: 991px) { /* Adjust breakpoint if needed */
-  .mini-player-track-info {
-    max-width: 150px; /* Give more space to controls on smaller screens */
+/* --- Responsive Design --- */
+@media (max-width: 1024px) {
+  .mini-player-track-info, .mini-player-actions-extra {
+    flex-basis: 200px; /* Give side sections a fixed base width */
+    flex-grow: 0;
   }
   .mini-player-progress-section {
-    margin: 0 var(--spacing-md);
+    flex-grow: 1;
+    min-width: 0; /* Let it shrink more */
   }
 }
-
 
 @media (max-width: 768px) {
   .mini-player-bar {
-    height: auto; /* Allow wrapping */
-    flex-direction: column;
+    height: auto;
+    flex-wrap: wrap; /* Allow items to wrap */
     padding: var(--spacing-sm);
-    gap: var(--spacing-xs);
+    justify-content: center;
+    gap: var(--spacing-sm);
   }
   .mini-player-track-info {
-    width: 100%;
-    max-width: 100%;
-    justify-content: center;
-    text-align: center;
-    margin-bottom: var(--spacing-xs);
-    order: 0;
-  }
-  .mini-player-progress-section {
-    width: 100%;
-    order: 1; /* Move progress below track info */
-    margin: var(--spacing-sm) 0; /* Add some vertical margin */
-    max-width: 100%;
+    order: 1; width: 100%; text-align: center; max-width: 100%; justify-content: center; flex-basis: auto;
   }
   .mini-player-controls-main {
-    order: 2; /* Main controls (play/pause) below progress */
-    margin-bottom: var(--spacing-sm);
+    order: 2; width: 100%; justify-content: center;
+  }
+  .mini-player-progress-section {
+    order: 3; width: 100%; margin: var(--spacing-xs) 0; flex-basis: auto;
   }
   .mini-player-actions-extra {
-    order: 3; /* Extra actions (volume, settings, close) at the bottom */
-    width: 100%;
-    justify-content: space-around; /* Distribute items */
-    flex-wrap: wrap; /* Allow wrapping if too many items */
-    gap: var(--spacing-md); /* More gap for touch targets */
-  }
-  .volume-control-container {
-    /* Could take more width or be centered */
+    order: 4; width: 100%; justify-content: space-around; flex-basis: auto;
   }
   .settings-dropdown {
-    /* Adjust positioning for mobile if needed, e.g., centered or full width */
-    right: auto;
-    left: 50%;
-    transform: translateX(-50%);
-    transform-origin: bottom center;
-    min-width: 220px; /* Wider for easier tapping */
+    left: 50%; transform: translateX(-50%); transform-origin: bottom center;
   }
-  .volume-slider {
-    width: 100px; /* Slightly wider on mobile if space allows */
-  }
-}
-
-@media (max-width: 480px) {
-    .mini-player-track-info {
-        max-width: calc(100% - 20px); /* Ensure it doesn't overflow */
-    }
-    .mini-player-actions-extra {
-        gap: var(--spacing-sm);
-    }
-    .volume-slider {
-        width: 80px;
-    }
 }

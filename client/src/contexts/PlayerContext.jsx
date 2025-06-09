@@ -28,16 +28,29 @@ export const PlayerProvider = ({ children }) => {
 
   // Refs for Tone.js and animation
   const pianoRef = useRef(null);
+  // --- FIX: Create a dedicated ref for our volume control node ---
+  const volumeNodeRef = useRef(null);
   const parsedMidiFileRef = useRef(null);
   const animationFrameRef = useRef(null);
 
   // --- Core Setup and Cleanup ---
 
   useEffect(() => {
+    // This effect runs only once on mount to initialize the piano and volume node.
     if (!pianoRef.current) {
-      console.log("Global Player: Initializing Piano...");
+      console.log("Global Player: Initializing Piano and Volume Node...");
       setIsLoadingPlayer(true);
-      const piano = new Piano({ velocities: 4, release: true }).toDestination();
+
+      // --- FIX: Create our own volume node ---
+      // Set its initial volume and connect it to the master output (speakers).
+      volumeNodeRef.current = new Tone.Volume(Tone.gainToDb(0.8)).toDestination();
+
+      // Create the piano instance.
+      const piano = new Piano({ velocities: 4, release: true });
+      
+      // --- FIX: Connect the piano to OUR volume node, NOT the destination directly ---
+      piano.connect(volumeNodeRef.current);
+
       pianoRef.current = piano;
 
       piano.load()
@@ -55,29 +68,34 @@ export const PlayerProvider = ({ children }) => {
     }
 
     return () => {
+      // Cleanup all created Tone.js nodes on unmount.
       pianoRef.current?.dispose();
+      volumeNodeRef.current?.dispose(); // <-- FIX: Dispose our volume node too
       Tone.Transport.stop();
       Tone.Transport.cancel();
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, []);
+  }, []); // Empty dependency array ensures this runs only once.
 
   // --- CORRECTED VOLUME/MUTE EFFECT ---
   useEffect(() => {
-    if (isPianoSamplerReady && pianoRef.current) {
-      // Use the dedicated .mute property on the Tone.Volume node for clarity.
-      pianoRef.current.volume.mute = isMuted;
+    // This effect now reliably controls our dedicated volume node.
+    if (volumeNodeRef.current) {
+      volumeNodeRef.current.mute = isMuted;
 
+      // Only adjust the volume if not muted.
       if (!isMuted) {
-        // The path is piano -> volumeNode -> volumeParam -> value
-        pianoRef.current.volume.volume.value = Tone.gainToDb(volume);
+        // The property path for a Tone.Volume node's volume is `.volume.value`
+        volumeNodeRef.current.volume.value = Tone.gainToDb(volume);
       }
     }
-  }, [volume, isMuted, isPianoSamplerReady]);
+    // This effect should only depend on the state values it controls.
+  }, [volume, isMuted]);
 
-  // --- Core Audio Functions (Unchanged, but provided for context) ---
+
+  // --- All other functions remain the same as they were correct ---
 
   const stopCurrentTrackAudio = useCallback((resetTime = true) => {
     Tone.Transport.stop();
@@ -150,16 +168,12 @@ export const PlayerProvider = ({ children }) => {
     }
   }, [isPianoSamplerReady, stopCurrentTrackAudio, scheduleNotes, clearAndClosePlayer]);
 
-  // --- CORRECTED playNextMidi FUNCTION ---
   const playNextMidi = useCallback(async () => {
     try {
-        // Now awaits the direct MIDI object, not a {data: ...} wrapper
         const nextMidi = await getRandomMidi(currentPlayingMidi?._id);
         if (nextMidi) {
-            console.log("Global Player: Autoplaying next MIDI:", nextMidi.title);
             await playMidi(nextMidi);
         } else {
-            console.log("Global Player: No different MIDI found to autoplay.");
             setIsPlaying(false);
         }
     } catch (error) {
@@ -190,7 +204,6 @@ export const PlayerProvider = ({ children }) => {
     if (isPlaying) { animationFrameRef.current = requestAnimationFrame(updateProgressLoop); }
     else if (animationFrameRef.current) { cancelAnimationFrame(animationFrameRef.current); }
   }, [isPlaying, updateProgressLoop]);
-
 
   const togglePlay = useCallback(async () => {
     if (!currentPlayingMidi || !isMidiDataLoaded) return;
