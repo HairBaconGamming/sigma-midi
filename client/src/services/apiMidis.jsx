@@ -1,4 +1,4 @@
-// client/src/services/apiMidis.js
+// client/src/services/apiMidis.jsx
 import api from './api';
 
 // params can include { sortBy, order, search, page, limit, uploaderId, genre, difficulty }
@@ -11,31 +11,45 @@ export const uploadMidiFile = (formData, onUploadProgress) => {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
-    onUploadProgress // Pass a callback for progress tracking
+    onUploadProgress
   });
 };
 
-// Tracks the download and returns info. Actual download is via /api/files/stream/:fileId
 export const trackMidiDownload = (id) => api.get(`/midis/download-track/${id}`);
 
-// NEW: Function to get the direct stream URL for a MIDI file
-// fileId is the _id of the file in GridFS (stored as midi.fileId in Midi model)
 export const getMidiFileStreamUrl = (fileId) => {
-  // Assuming your api instance is configured with the correct baseURL for the backend
-  // If api.defaults.baseURL is '/api', this will construct a relative URL.
-  // If your backend is on a different domain, ensure baseURL is set correctly or use absolute URL.
   return `${api.defaults.baseURL || ''}/files/stream/${fileId}`;
 };
 
-
-// If you implement delete/update functionality for users on their own MIDIs
 export const updateMidiDetails = (id, midiData) => api.put(`/midis/${id}`, midiData);
 export const deleteMidiById = (id) => api.delete(`/midis/${id}`);
 
-// Placeholder for fetching user's MIDIs (can use getAllMidis with uploaderId param)
 export const getMyMidis = (uploaderId, params) => {
     return getAllMidis({ ...params, uploaderId });
 };
 
-// Placeholder for fetching user profile (public view)
-export const getUserPublicProfile = (userId) => api.get(`/auth/profile/${userId}`);
+// --- CORRECTED FUNCTION ---
+export const getRandomMidi = async (excludeId = null) => {
+  try {
+    // For true efficiency, a backend endpoint `/api/midis/random?exclude=...` is best.
+    // This client-side approach is a good fallback.
+    const params = { limit: 10, sortBy: 'upload_date', order: 'desc' };
+    const res = await api.get('/midis', { params });
+    
+    if (res.data && res.data.midis && res.data.midis.length > 0) {
+      let candidates = res.data.midis;
+      if (excludeId) {
+        candidates = candidates.filter(m => m._id !== excludeId);
+      }
+      if (candidates.length > 0) {
+        const randomIndex = Math.floor(Math.random() * candidates.length);
+        // **FIX:** Return the MIDI object directly, not wrapped in a `data` property.
+        return candidates[randomIndex];
+      }
+    }
+    return null; // No suitable MIDI found
+  } catch (error) {
+    console.error("Error fetching random MIDI in apiMidis.jsx:", error);
+    throw error; // Re-throw to be caught by the calling function in PlayerContext
+  }
+};
