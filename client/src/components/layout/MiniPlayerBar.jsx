@@ -1,8 +1,11 @@
 // client/src/components/layout/MiniPlayerBar.jsx
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { usePlayer } from '../../contexts/PlayerContext';
-import { FaPlay, FaPause, FaStepForward, FaStepBackward, FaVolumeUp, FaVolumeMute, FaTimes } from 'react-icons/fa';
+import { 
+    FaPlay, FaPause, FaVolumeUp, FaVolumeMute, FaVolumeDown, FaTimes, 
+    FaCog, FaSyncAlt, FaStepForward // Icons for settings, loop, autoplay
+} from 'react-icons/fa';
 import '../../assets/css/MiniPlayerBar.css';
 
 const formatTime = (seconds) => {
@@ -20,12 +23,38 @@ const MiniPlayerBar = () => {
     durationTotal,
     isLoadingPlayer,
     playerError,
-    isMuted,
+    
+    isLooping, setIsLooping,
+    isAutoplayNext, setIsAutoplayNext,
+    volume, setVolume, // Direct setVolume from context (which is handleSetVolume)
+    isMuted, toggleMute, // Direct toggleMute from context (which is toggleMuteOnly)
+
     togglePlay,
     seekPlayer,
-    togglePlayerMute,
-    clearAndClosePlayer, // CHANGED: Use new function to fully close and clear
+    clearAndClosePlayer,
   } = usePlayer();
+
+  const [showSettings, setShowSettings] = useState(false);
+  const settingsButtonRef = useRef(null);
+  const settingsDropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        settingsDropdownRef.current && !settingsDropdownRef.current.contains(event.target) &&
+        settingsButtonRef.current && !settingsButtonRef.current.contains(event.target)
+      ) {
+        setShowSettings(false);
+      }
+    };
+    if (showSettings) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showSettings]);
+
 
   if (!currentPlayingMidi && !isLoadingPlayer) {
     return null;
@@ -40,11 +69,11 @@ const MiniPlayerBar = () => {
 
   const progressPercent = durationTotal > 0 ? (playbackTime / durationTotal) * 100 : 0;
 
+  const VolumeIcon = isMuted ? FaVolumeMute : (volume <= 0.01 ? FaVolumeMute : (volume < 0.5 ? FaVolumeDown : FaVolumeUp));
+
   return (
     <div className={`mini-player-bar ${currentPlayingMidi ? 'visible' : ''}`}>
-      {isLoadingPlayer && (
-        <div className="player-loading-indicator">Loading Player...</div>
-      )}
+      {isLoadingPlayer && <div className="player-loading-indicator">Loading Player...</div>}
       {playerError && !isLoadingPlayer && (
         <div className="player-error-indicator">Error: {playerError} 
             <button onClick={clearAndClosePlayer} className="player-close-btn-error" title="Clear Error"><FaTimes/></button>
@@ -77,10 +106,58 @@ const MiniPlayerBar = () => {
           </div>
 
           <div className="mini-player-actions-extra">
-            <button onClick={togglePlayerMute} className="control-btn volume-btn" aria-label={isMuted ? 'Unmute' : 'Mute'}>
-              {isMuted ? <FaVolumeMute /> : <FaVolumeUp />}
-            </button>
-            <button onClick={clearAndClosePlayer} className="control-btn close-player-btn" title="Close Player"> {/* CHANGED */}
+            <div className="volume-control-container">
+              <button onClick={toggleMute} className="control-btn volume-icon-btn" aria-label={isMuted ? 'Unmute' : 'Mute'}>
+                <VolumeIcon />
+              </button>
+              <input 
+                type="range" 
+                min="0" 
+                max="1" 
+                step="0.01" 
+                value={isMuted ? 0 : volume}
+                onChange={(e) => setVolume(parseFloat(e.target.value))}
+                className="volume-slider"
+                aria-label="Volume"
+              />
+            </div>
+
+            <div className="settings-container">
+              <button 
+                ref={settingsButtonRef}
+                onClick={() => setShowSettings(!showSettings)} 
+                className={`control-btn settings-btn ${showSettings ? 'active' : ''}`} 
+                title="Player Settings"
+                aria-haspopup="true"
+                aria-expanded={showSettings}
+              >
+                <FaCog />
+              </button>
+              {showSettings && (
+                <div ref={settingsDropdownRef} className="settings-dropdown">
+                  <label htmlFor="loop-checkbox">
+                    <input 
+                      type="checkbox" 
+                      id="loop-checkbox"
+                      checked={isLooping} 
+                      onChange={(e) => setIsLooping(e.target.checked)} 
+                    />
+                    <FaSyncAlt /> Loop
+                  </label>
+                  <label htmlFor="autoplay-checkbox">
+                    <input 
+                      type="checkbox" 
+                      id="autoplay-checkbox"
+                      checked={isAutoplayNext} 
+                      onChange={(e) => setIsAutoplayNext(e.target.checked)} 
+                    />
+                    <FaStepForward /> Autoplay Next
+                  </label>
+                </div>
+              )}
+            </div>
+
+            <button onClick={clearAndClosePlayer} className="control-btn close-player-btn" title="Close Player">
                 <FaTimes />
             </button>
           </div>
@@ -90,4 +167,4 @@ const MiniPlayerBar = () => {
   );
 };
 
-export default MiniPlayerBar;
+export default React.memo(MiniPlayerBar); // Memoize for performance

@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useRef, useCallback, useEff
 import * as Tone from 'tone';
 import { Midi as ToneMidi } from '@tonejs/midi';
 import { Piano } from '@tonejs/piano';
-import { getMidiFileStreamUrl, getAllMidis } from '../services/apiMidis'; // Assuming getAllMidis for autoplay
+import { getMidiFileStreamUrl, getAllMidis } from '../services/apiMidis';
 
 const PlayerContext = createContext();
 
@@ -19,23 +19,22 @@ export const PlayerProvider = ({ children }) => {
   const [isLoadingPlayer, setIsLoadingPlayer] = useState(false);
   const [playerError, setPlayerError] = useState('');
 
-  // New Settings States
   const [isLooping, setIsLooping] = useState(false);
   const [isAutoplayNext, setIsAutoplayNext] = useState(false);
-  const [volume, setVolume] = useState(0.8); // Volume from 0 to 1 (maps to -Infinity to 0 dB for Tone.js)
-  const [isMuted, setIsMuted] = useState(false); // Keep isMuted for quick toggle, volume slider will override
+  const [volume, setVolume] = useState(0.8);
+  const [isMuted, setIsMuted] = useState(false);
 
   const pianoRef = useRef(null);
   const parsedMidiFileRef = useRef(null);
   const scheduledEventsRef = useRef([]);
   const animationFrameRef = useRef(null);
   const toneContextStarted = useRef(false);
-  const previousVolumeRef = useRef(volume); // To store volume before mute
+  const previousVolumeRef = useRef(volume);
+  const playMidiRef = useRef(null); // Ref to hold the playMidi function
 
-  // Convert linear volume (0-1) to dB for Tone.js
   const linearToDb = (linVol) => {
-    if (linVol <= 0) return -Infinity;
-    return 20 * Math.log10(linVol);
+    if (linVol <= 0.001) return -Infinity; // Threshold for true mute
+    return Tone.gainToDb(linVol); // Use Tone.js's utility for gain to dB
   };
 
   useEffect(() => {
@@ -43,49 +42,62 @@ export const PlayerProvider = ({ children }) => {
       console.log("Global Player: Initializing Piano...");
       setIsLoadingPlayer(true);
       const piano = new Piano({ velocities: 4, release: true });
-      piano.toDestination(); // Connects to master out
+      piano.toDestination();
       pianoRef.current = piano;
+
       piano.load()
         .then(() => {
+          console.log("Global Player: Piano samples loaded successfully.");
           setIsPianoSamplerReady(true);
           setIsLoadingPlayer(false);
-          // Set initial volume
-          if (pianoRef.current.output) {
-            pianoRef.current.output.volume.value = linearToDb(volume);
-          }
-          console.log("Global Player: Piano samples loaded.");
+          // Initial volume will be set by the dedicated volume useEffect
         })
         .catch(err => {
           console.error("Global Player: Failed to load piano samples:", err);
-          setPlayerError("Could not load piano sound for global player.");
+          setPlayerError("Could not load piano sound. " + (err.message || ""));
           setIsPianoSamplerReady(false);
           setIsLoadingPlayer(false);
-          pianoRef.current = null;
-        });
-    }
-    return () => {
-        if (pianoRef.current) {
+          if (pianoRef.current) {
             pianoRef.current.dispose();
             pianoRef.current = null;
-        }
-        Tone.Transport.stop();
-        Tone.Transport.cancel();
-        scheduledEventsRef.current.forEach(id => Tone.Transport.clear(id));
-        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-    };
-  }, [isPianoSamplerReady]); // Removed volume from here to avoid re-init on volume change
+          }
+        });
+    }
 
-  // Effect to update Tone.js volume when `volume` state changes or `isMuted` changes
-  useEffect(() => {
-    if (pianoRef.current && pianoRef.current.output && isPianoSamplerReady) {
-      if (isMuted) {
-        pianoRef.current.output.volume.value = -Infinity;
-      } else {
-        pianoRef.current.output.volume.value = linearToDb(volume);
+    return () => {
+      if (pianoRef.current) {
+        pianoRef.current.dispose();
+        pianoRef.current = null;
+        console.log("Global Player: Piano disposed on context unmount/re-init.");
       }
+      Tone.Transport.stop();
+      Tone.Transport.cancel();
+      scheduledEventsRef.current.forEach(id => Tone.Transport.clear(id));
+      scheduledEventsRef.current = [];
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [isPianoSamplerReady]);
+
+  useEffect(() => {
+    if (isPianoSamplerReady && pianoRef.current && pianoRef.current.output) {
+      if (pianoRef.current.output.volume && typeof pianoRef.current.output.volume.value !== 'undefined') {
+        if (isMuted) {
+          pianoRef.current.output.volume.value = -Infinity;
+          console.log("Global Player: Piano Muted (volume set to -Infinity).");
+        } else {
+          const dbValue = linearToDb(volume);
+          pianoRef.current.output.volume.value = dbValue;
+          console.log(`Global Player: Piano volume set to ${volume.toFixed(2)} linear (${dbValue !== -Infinity ? dbValue.toFixed(2) : '-Inf'} dB).`);
+        }
+      } else {
+        console.warn("Global Player: pianoRef.current.output.volume or its .value is not available for setting.");
+      }
+    } else if (isPianoSamplerReady && pianoRef.current && !pianoRef.current.output) {
+        console.warn("Global Player: Piano is ready, but pianoRef.current.output is not defined. Cannot set volume.");
     }
   }, [volume, isMuted, isPianoSamplerReady]);
-
 
   const stopCurrentTrackAudio = useCallback((resetPlayback = true) => {
     Tone.Transport.stop();
@@ -166,36 +178,51 @@ export const PlayerProvider = ({ children }) => {
     return true;
   };
 
+  const _playMidiInternal = useCallback(async (midiData) => { // Renamed to avoid conflict in useEffect deps
+    if (!midiData || !midiData.fileId) { setPlayerError("Invalid MIDI data to play."); return; }
+    if (!isPianoSamplerReady) { setPlayerError("Piano sound is not ready yet. Please wait."); return; }
+    console.log("Global Player: playMidi called for", midiData.title);
+    const audioContextNowReady = await startToneAudioContext();
+    if (!audioContextNowReady) return;
+    if (!currentPlayingMidi || currentPlayingMidi._id !== midiData._id || !isMidiDataLoaded) {
+      const loaded = await loadAndParseMidi(midiData);
+      if (!loaded) return;
+    }
+    setPlaybackTime(0); Tone.Transport.seconds = 0;
+    // _internalTogglePlay will be called by playMidiRef.current
+    if (playMidiRef.current && playMidiRef.current._internalTogglePlay) {
+        playMidiRef.current._internalTogglePlay(midiData, true);
+    } else {
+        console.error("Global Player: _internalTogglePlay not available on playMidiRef.current");
+    }
+  }, [isPianoSamplerReady, currentPlayingMidi, isMidiDataLoaded, loadAndParseMidi /* _internalTogglePlay removed */]);
+
   const playNextMidi = useCallback(async () => {
     if (!currentPlayingMidi) return;
     console.log("Global Player: Attempting to play next MIDI...");
     try {
-        // Basic: fetch a random MIDI or the next one in some list.
-        // This is a simplified example. A real implementation might involve a playlist.
-        const res = await getAllMidis({ limit: 5, sortBy: 'random' }); // Fetch a few random ones
+        const res = await getAllMidis({ limit: 5, sortBy: 'random' });
         let nextMidiToPlay = null;
         if (res.data && res.data.midis && res.data.midis.length > 0) {
             nextMidiToPlay = res.data.midis.find(m => m._id !== currentPlayingMidi._id);
-            if (!nextMidiToPlay && res.data.midis.length > 0) nextMidiToPlay = res.data.midis[0]; // Fallback to first if different not found
+            if (!nextMidiToPlay && res.data.midis.length > 0) nextMidiToPlay = res.data.midis[0];
         }
-
         if (nextMidiToPlay && nextMidiToPlay._id !== currentPlayingMidi._id) {
             console.log("Global Player: Autoplaying next MIDI:", nextMidiToPlay.title);
-            // playMidi will handle loading and starting
-            // Need to ensure playMidi is available in this scope or pass it if defined later
-            // For now, assuming playMidi (defined below) will be used.
-            // This creates a slight circular dependency in thought, but React handles it.
-            // We'll call the fully defined playMidi function.
-            await playMidi(nextMidiToPlay);
+            if (playMidiRef.current && playMidiRef.current.playMidi) {
+                await playMidiRef.current.playMidi(nextMidiToPlay);
+            } else {
+                 console.error("Global Player: playMidi not available on playMidiRef.current for autoplay");
+            }
         } else {
             console.log("Global Player: No different MIDI found to autoplay or end of list.");
-            setIsPlaying(false); // Stop if no next
+            setIsPlaying(false);
         }
     } catch (error) {
         console.error("Global Player: Error fetching next MIDI for autoplay:", error);
         setIsPlaying(false);
     }
-  }, [currentPlayingMidi]); // playMidi will be added to dependency array of the outer playMidi
+  }, [currentPlayingMidi /* playMidi removed */]);
 
   const updateProgressLoop = useCallback(() => {
     if (Tone.Transport.state === "started" && parsedMidiFileRef.current) {
@@ -203,22 +230,14 @@ export const PlayerProvider = ({ children }) => {
       setPlaybackTime(currentTime);
       if (currentTime >= durationTotal - 0.05 && durationTotal > 0) {
         console.log("Global Player: MIDI end reached for", parsedMidiFileRef.current.name);
-        Tone.Transport.stop(); // Stop current
-        setPlaybackTime(0); Tone.Transport.seconds = 0; // Reset for current track
-
+        Tone.Transport.stop(); setPlaybackTime(0); Tone.Transport.seconds = 0;
         if (isLooping) {
           console.log("Global Player: Looping", parsedMidiFileRef.current.name);
-          if (scheduleNotesForGlobalPlayer()) {
-            Tone.Transport.start(); // Restart immediately
-            // isPlaying remains true
-          } else {
-            setIsPlaying(false);
-          }
+          if (scheduleNotesForGlobalPlayer()) Tone.Transport.start(); else setIsPlaying(false);
         } else if (isAutoplayNext) {
-            playNextMidi(); // This will set isPlaying if successful
+            playNextMidi();
         } else {
-          setIsPlaying(false); // Just stop if no loop or autoplay
-          if (parsedMidiFileRef.current) scheduleNotesForGlobalPlayer(); // Reschedule for manual replay
+          setIsPlaying(false); if (parsedMidiFileRef.current) scheduleNotesForGlobalPlayer();
         }
       } else {
         animationFrameRef.current = requestAnimationFrame(updateProgressLoop);
@@ -227,14 +246,9 @@ export const PlayerProvider = ({ children }) => {
   }, [durationTotal, scheduleNotesForGlobalPlayer, isLooping, isAutoplayNext, playNextMidi]);
 
   useEffect(() => {
-    if (isPlaying) {
-      animationFrameRef.current = requestAnimationFrame(updateProgressLoop);
-    } else {
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-    }
-    return () => {
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-    };
+    if (isPlaying) animationFrameRef.current = requestAnimationFrame(updateProgressLoop);
+    else if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    return () => { if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current); };
   }, [isPlaying, updateProgressLoop]);
 
   const _internalTogglePlay = useCallback(async (midiToOperateOn, forcePlay) => {
@@ -254,42 +268,26 @@ export const PlayerProvider = ({ children }) => {
       Tone.Transport.start(); setIsPlaying(true); console.log("Global Player: Playing", midiToOperateOn.title);
     }
   }, [isMidiDataLoaded, isPianoSamplerReady, playbackTime, scheduleNotesForGlobalPlayer, currentPlayingMidi]);
-
-  const playMidi = useCallback(async (midiData) => {
-    if (!midiData || !midiData.fileId) { setPlayerError("Invalid MIDI data to play."); return; }
-    if (!isPianoSamplerReady) { setPlayerError("Piano sound is not ready yet. Please wait."); return; }
-    console.log("Global Player: playMidi called for", midiData.title);
-    const audioContextNowReady = await startToneAudioContext();
-    if (!audioContextNowReady) return;
-    if (!currentPlayingMidi || currentPlayingMidi._id !== midiData._id || !isMidiDataLoaded) {
-      const loaded = await loadAndParseMidi(midiData);
-      if (!loaded) return;
-    }
-    setPlaybackTime(0); Tone.Transport.seconds = 0;
-    _internalTogglePlay(midiData, true);
-  }, [isPianoSamplerReady, currentPlayingMidi, isMidiDataLoaded, loadAndParseMidi, _internalTogglePlay]);
   
-  // Update playNextMidi's dependency array now that playMidi is fully defined above it.
-  // This is a bit of a workaround for functions calling each other within the same hook closure.
-  // A more advanced state machine or refactoring might avoid this.
+  // Assign to ref after definition
   useEffect(() => {
-    // This effect is just to ensure playNextMidi has the latest playMidi in its closure
-    // if it were to be defined in a way that it captures an old playMidi.
-    // However, with useCallback, playNextMidi should get the latest playMidi if playMidi is in its dep array.
-    // The main issue is if playMidi itself is a dependency of playNextMidi's definition.
-    // For now, the current structure should work as playNextMidi is called by updateProgressLoop,
-    // and updateProgressLoop has playNextMidi in its deps.
-  }, [playMidi]);
+    playMidiRef.current = {
+        playMidi: _playMidiInternal,
+        _internalTogglePlay: _internalTogglePlay
+    };
+  }, [_playMidiInternal, _internalTogglePlay]);
 
 
   const generalTogglePlay = useCallback(() => {
     if (currentPlayingMidi && parsedMidiFileRef.current) {
-      _internalTogglePlay(currentPlayingMidi, undefined);
+      if (playMidiRef.current && playMidiRef.current._internalTogglePlay) {
+        playMidiRef.current._internalTogglePlay(currentPlayingMidi, undefined);
+      }
     } else {
       if (!currentPlayingMidi) setPlayerError("No MIDI selected to play/pause.");
       else if (!isMidiDataLoaded) setPlayerError("MIDI data not loaded yet.");
     }
-  }, [currentPlayingMidi, _internalTogglePlay, isMidiDataLoaded]);
+  }, [currentPlayingMidi, isMidiDataLoaded /* _internalTogglePlay removed */]);
 
   const seekPlayer = useCallback(async (time) => {
     if (!currentPlayingMidi || !isMidiDataLoaded || !parsedMidiFileRef.current || !isPianoSamplerReady || durationTotal <= 0) return;
@@ -312,52 +310,24 @@ export const PlayerProvider = ({ children }) => {
   const handleSetVolume = useCallback((newVolume) => {
     const clampedVolume = Math.max(0, Math.min(1, newVolume));
     setVolume(clampedVolume);
-    if (clampedVolume > 0 && isMuted) { // Unmute if volume is adjusted while muted
-        setIsMuted(false);
-    }
-    previousVolumeRef.current = clampedVolume; // Store for unmuting
+    if (clampedVolume > 0 && isMuted) setIsMuted(false);
+    previousVolumeRef.current = clampedVolume;
   }, [isMuted]);
 
-  const toggleMuteOnly = useCallback(() => { // Renamed from togglePlayerMute
+  const toggleMuteOnly = useCallback(() => {
     const newMuteState = !isMuted;
     setIsMuted(newMuteState);
-    if (newMuteState) {
-        previousVolumeRef.current = volume; // Save current volume
-        // Volume change is handled by the useEffect watching `isMuted` and `volume`
-    } else {
-        // When unmuting, restore to previousVolumeRef.current if it was > 0,
-        // or to a default if previous was 0.
-        // The useEffect will handle setting the actual Tone.js volume.
-        // No need to directly set pianoRef.current.output.volume.value here.
-    }
+    if (newMuteState) previousVolumeRef.current = volume;
   }, [isMuted, volume]);
 
-
   const value = {
-    currentPlayingMidi,
-    isPlaying,
-    playbackTime,
-    durationTotal,
-    isMidiDataLoaded,
-    isPianoSamplerReady,
-    isLoadingPlayer,
-    playerError,
-    
-    // Settings
-    isLooping,
-    setIsLooping,
-    isAutoplayNext,
-    setIsAutoplayNext,
-    volume,
-    setVolume: handleSetVolume, // Use the handler
-    isMuted, // Still useful for UI to show mute state
-    toggleMute: toggleMuteOnly, // Expose the specific mute toggle
-
-    playMidi,
+    currentPlayingMidi, isPlaying, playbackTime, durationTotal, isMidiDataLoaded,
+    isPianoSamplerReady, isLoadingPlayer, playerError,
+    isLooping, setIsLooping, isAutoplayNext, setIsAutoplayNext,
+    volume, setVolume: handleSetVolume, isMuted, toggleMute: toggleMuteOnly,
+    playMidi: (midiData) => playMidiRef.current?.playMidi(midiData), // Call through ref
     togglePlay: generalTogglePlay,
-    seekPlayer,
-    stopCurrentTrackAudio,
-    clearAndClosePlayer,
+    seekPlayer, stopCurrentTrackAudio, clearAndClosePlayer,
   };
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;
