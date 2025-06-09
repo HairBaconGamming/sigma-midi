@@ -92,7 +92,7 @@ function App() {
   return (
     // StrictMode can be helpful for development, but sometimes can cause double renders
     // for useEffects with empty dependency arrays if not careful.
-    <React.StrictMode> 
+    //<React.StrictMode> 
       <HelmetProvider> {/* HelmetProvider should be high up, wrapping router usually */}
         <AuthProvider>
           <PlayerProvider>
@@ -102,7 +102,7 @@ function App() {
           </PlayerProvider>
         </AuthProvider>
       </HelmetProvider>
-    </React.StrictMode>
+    //</React.StrictMode>
   );
 }
 
