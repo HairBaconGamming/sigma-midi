@@ -1,0 +1,153 @@
+/* client/src/assets/css/PaginationControls.css */
+
+.pagination-controls-wrapper {
+  display: flex;
+  flex-direction: column; /* Stack buttons and form on small screens if needed */
+  align-items: center;
+  justify-content: center;
+  /* margin-top: var(--spacing-xxl); Bỏ margin-top ở đây, để component cha quyết định */
+  /* padding-top: var(--spacing-lg); Bỏ padding-top ở đây */
+  /* border-top: 1px solid var(--color-border); Bỏ border-top ở đây */
+  gap: var(--spacing-lg); /* Gap between button group and form */
+  width: 100%; /* Để component tự điều chỉnh chiều rộng */
+  animation: fadeInUpStagger 0.5s 0.3s ease-out forwards; /* Giữ animation nếu muốn */
+  opacity: 0; /* Cho animation */
+}
+
+/* Keyframes nếu chưa có ở file global (App.css) */
+@keyframes fadeInUpStagger {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+
+.pagination-buttons {
+  display: flex;
+  flex-wrap: wrap; /* Allow buttons to wrap */
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.pagination-btn {
+  background-color: var(--color-background-light);
+  color: var(--color-text-medium);
+  border: 1px solid var(--color-border);
+  padding: 0.6rem 1rem; /* Điều chỉnh padding */
+  border-radius: var(--border-radius-md);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: var(--transition-default);
+  min-width: 40px; /* Đảm bảo nút số có chiều rộng tối thiểu */
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: var(--color-background-input);
+}
+.pagination-btn:hover:not(:disabled) {
+  background-color: var(--color-primary);
+  color: var(--color-background-dark);
+  border-color: var(--color-primary);
+}
+.pagination-btn.active {
+  background-color: var(--color-primary);
+  color: var(--color-background-dark);
+  border-color: var(--color-primary-hover);
+  box-shadow: var(--shadow-md);
+  pointer-events: none; /* Không cho click lại trang hiện tại */
+}
+.pagination-btn-text {
+    display: inline; /* Mặc định hiển thị */
+}
+
+.pagination-ellipsis {
+  padding: 0.6rem 0.5rem;
+  color: var(--color-text-dark);
+  display: inline-flex;
+  align-items: center;
+}
+
+.pagination-goto-form {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.pagination-input {
+  width: 70px; /* Chiều rộng cho input số trang */
+  padding: 0.6rem 0.8rem;
+  text-align: center;
+  font-size: 0.9rem;
+  border-radius: var(--border-radius-md);
+  background-color: var(--color-background-input);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-light);
+}
+.pagination-input::-webkit-outer-spin-button,
+.pagination-input::-webkit-inner-spin-button { /* Ẩn nút tăng giảm của input number */
+  -webkit-appearance: none;
+  margin: 0;
+}
+.pagination-input[type=number] {
+  -moz-appearance: textfield; /* Firefox */
+}
+
+
+.pagination-go-btn {
+  /* Sử dụng style .btn hoặc .btn-primary nếu có */
+  padding: 0.6rem 1.2rem;
+  font-size: 0.9rem;
+  background-color: var(--color-primary);
+  color: var(--color-background-dark);
+  border-radius: var(--border-radius-md); /* Thêm border-radius nếu chưa có từ .btn */
+  border: none; /* Reset border nếu .btn có */
+}
+.pagination-go-btn:hover {
+  background-color: var(--color-primary-hover);
+}
+
+/* Responsive cho pagination */
+@media (max-width: 768px) {
+  .pagination-btn {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.85rem;
+  }
+  .pagination-btn-text { /* Ẩn text trên mobile để tiết kiệm không gian */
+    display: none;
+  }
+  .pagination-btn svg { /* Đảm bảo icon vẫn hiển thị */
+    margin-right: 0;
+  }
+   .pagination-btn.page-number { /* Giữ lại số trang */
+    padding: 0.5rem;
+    min-width: 36px;
+    height: 36px;
+  }
+  .pagination-input {
+    width: 60px;
+    padding: 0.5rem 0.7rem;
+  }
+  .pagination-go-btn {
+    padding: 0.5rem 1rem;
+  }
+}
+@media (max-width: 480px) {
+    .pagination-buttons {
+        gap: 2px; /* Giảm gap nhỏ hơn nữa */
+    }
+    .pagination-btn {
+        padding: 0.4rem 0.6rem;
+        min-width: 32px;
+    }
+    .pagination-btn.page-number {
+        min-width: 32px;
+        height: 32px;
+        font-size: 0.8rem;
+    }
+}

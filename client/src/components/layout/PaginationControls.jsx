@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaAngleLeft, FaAngleRight, FaAngleDoubleLeft, FaAngleDoubleRight } from 'react-icons/fa';
 // CSS cho component này sẽ được thêm vào HomePage.css hoặc file riêng
+import '../../assets/css/PaginationControls.css'; 
 
 const PaginationControls = ({ currentPage, totalPages, onPageChange }) => {
   const [inputPage, setInputPage] = useState(currentPage.toString());
@@ -128,11 +129,11 @@ const PaginationControls = ({ currentPage, totalPages, onPageChange }) => {
   };
 
   return (
-    <div className="pagination-controls-wrapper">
+    <div className="pagination-controls-wrapper"> {/* Wrapper này giờ sẽ nhận style từ file CSS riêng */}
       <div className="pagination-buttons">
         {renderPageNumbers()}
       </div>
-      {totalPages > 1 && ( // Chỉ hiển thị input nếu có nhiều hơn 1 trang
+      {totalPages > 1 && (
         <form onSubmit={handleGoToPage} className="pagination-goto-form">
           <input
             type="number"

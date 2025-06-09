@@ -207,6 +207,21 @@
     margin-right: var(--spacing-sm);
 }
 
+.my-midis-header h1 .my-midis-count {
+  font-size: 1rem; /* Nhỏ hơn tiêu đề chính */
+  font-weight: 500;
+  color: var(--color-text-dark);
+  margin-left: var(--spacing-sm);
+  background-color: var(--color-background-light);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  vertical-align: middle;
+}
+
+/* Đảm bảo PaginationControls có khoảng cách phù hợp */
+.my-midis-page-container .pagination-controls-wrapper {
+  margin-top: var(--spacing-xl); /* Hoặc xxl tùy ý */
+}
 
 @media (max-width: 768px) {
   .my-midis-page-container {

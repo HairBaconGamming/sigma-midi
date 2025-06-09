@@ -228,6 +228,9 @@
   border: 1px solid var(--color-primary);
 }
 
+.my-midis-page-container .pagination-controls-wrapper {
+  margin-top: var(--spacing-xl); /* Hoặc xxl tùy ý */
+}
 
 /* Staggered animation helper (can be applied via JS or more specific CSS) */
 @keyframes fadeInUpStagger {
