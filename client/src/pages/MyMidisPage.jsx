@@ -21,7 +21,7 @@ const MyMidisPage = () => {
       setPageMessage({ type: '', content: '' }); // Xóa thông báo cũ
       try {
         const params = {
-          uploaderId: user.id,
+          uploaderId: user._id,
           sortBy: 'upload_date',
           order: 'desc',
         };

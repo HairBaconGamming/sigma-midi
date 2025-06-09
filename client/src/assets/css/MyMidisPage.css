@@ -1,8 +1,8 @@
 /* client/src/assets/css/MyMidisPage.css */
 .my-midis-page-container {
   max-width: 1320px; /* Consistent with HomePage */
-  margin: var(--spacing-xl) auto;
-  padding: var(--spacing-xs) var(--spacing-lg);
+  margin: var(--spacing-xl) auto; /* Top/bottom margin */
+  padding: var(--spacing-xs) var(--spacing-lg); /* Less top padding, more side padding */
   animation: myMidisPageAppear 0.6s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
 }
 
@@ -20,14 +20,15 @@
   margin-bottom: var(--spacing-xl);
   padding-bottom: var(--spacing-lg);
   border-bottom: 1px solid var(--color-border);
-  animation: sectionFadeInUp 0.5s 0.1s ease-out forwards; opacity: 0;
+  animation: sectionFadeInUp 0.5s 0.1s ease-out forwards; /* Staggered animation */
+  opacity: 0; /* Start hidden for animation */
 }
 
-.my-midis-header .header-title-group { /* NEW: Group for icon and title */
+.my-midis-header .header-title-group {
     display: flex;
     align-items: center;
     gap: var(--spacing-md);
-    margin-right: auto; /* Push upload button to the right */
+    margin-right: auto; /* Push upload button to the right, if header is flex */
 }
 
 .my-midis-header .header-icon {
@@ -45,12 +46,13 @@
 }
 
 .btn-upload-new {
-  /* Using global .btn */
+  /* Using global .btn and .btn-primary styles from App.css */
+  /* Specific overrides if needed: */
   background: linear-gradient(45deg, var(--color-secondary), var(--color-secondary-hover));
-  color: #fff; /* Đảm bảo text màu trắng trên nền gradient */
+  color: #fff; /* Ensure text is white on this gradient */
   padding: var(--spacing-sm) var(--spacing-lg);
   font-weight: 600;
-  border-radius: var(--border-radius-full);
+  border-radius: var(--border-radius-full); /* Pill shape */
   box-shadow: var(--shadow-sm);
   transition: var(--transition-default), transform 0.1s ease-out;
 }
@@ -60,7 +62,7 @@
 }
 .btn-upload-new svg {
   font-size: 1.2rem; /* Icon size in button */
-  margin-right: var(--spacing-xs); /* Thêm khoảng cách nếu có text */
+  margin-right: var(--spacing-xs); /* Space between icon and text */
 }
 
 
@@ -74,7 +76,8 @@
   margin-top: var(--spacing-xl);
   border: 1px dashed var(--color-border);
   box-shadow: var(--shadow-inner);
-  animation: sectionFadeInUp 0.5s 0.2s ease-out forwards; opacity: 0;
+  animation: sectionFadeInUp 0.5s 0.2s ease-out forwards;
+  opacity: 0;
 }
 .no-midis-message p {
   margin-bottom: var(--spacing-lg);
@@ -89,26 +92,31 @@
 
 .my-midis-grid {
   /* Uses .midi-grid styles from HomePage.css for consistency */
-  animation: gridItemsAppear 0.5s 0.3s ease-out forwards; opacity: 0;
+  /* Example: display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--spacing-xl); */
+  animation: gridItemsAppear 0.5s 0.3s ease-out forwards;
+  opacity: 0;
 }
 @keyframes gridItemsAppear {
     from { opacity: 0; }
     to { opacity: 1; }
 }
 
+/* Wrapper for each card to add actions below it */
 .my-midi-card-wrapper {
   display: flex;
   flex-direction: column;
   position: relative;
-  background-color: var(--color-background-medium);
-  border-radius: var(--border-radius-lg);
+  background-color: var(--color-background-medium); /* Match card bg */
+  border-radius: var(--border-radius-lg); /* Match card radius */
   box-shadow: var(--shadow-md);
-  /* overflow: hidden;  Let MidiCard handle its own overflow if needed */
+  /* overflow: hidden; Let MidiCard handle its own overflow if needed */
   transition: var(--transition-default);
+  /* Animation for individual cards can be added here or in MidiCard.css */
 }
 /* Hover effect is on MidiCard itself, no need to repeat here unless for the wrapper specifically */
 
 
+/* Styling for Edit/Delete buttons below the MidiCard */
 .my-midi-actions {
   display: flex;
   justify-content: flex-end; /* Align buttons to the right */
@@ -124,7 +132,7 @@
 /* General style for icon buttons in this action bar */
 .btn-icon-action {
   background: none;
-  border: 1px solid transparent; /* Transparent border for consistent sizing */
+  border: 1px solid transparent; /* Transparent border for consistent sizing on hover */
   color: var(--color-text-dark);
   font-size: 1.1rem; /* Size of the icon itself */
   padding: var(--spacing-xs); /* Padding around the icon */
@@ -139,8 +147,13 @@
 }
 .btn-icon-action:hover {
   background-color: var(--color-background-light);
-  color: var(--color-text-light);
+  color: var(--color-text-light); /* General hover color */
 }
+.btn-icon-action:focus-visible { /* Ensure focus is visible */
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
 
 .btn-edit-midi:hover {
   color: var(--color-warning); /* Specific hover color for edit */
@@ -150,7 +163,7 @@
   color: var(--color-error); /* Specific hover color for delete */
 }
 
-/* Inline loading indicator */
+/* Inline loading indicator for when fetching updates but some MIDIs are already shown */
 .loading-container-inline {
     display: flex;
     align-items: center;
@@ -158,6 +171,7 @@
     padding: var(--spacing-md);
     color: var(--color-text-dark);
     font-size: 0.9rem;
+    margin-bottom: var(--spacing-lg); /* Space it out if it appears */
 }
 .spinner-inline {
     width: 20px;
@@ -165,7 +179,7 @@
     border: 3px solid var(--color-background-light);
     border-top-color: var(--color-primary);
     border-radius: 50%;
-    animation: spin 0.8s linear infinite;
+    animation: spin 0.8s linear infinite; /* Assuming spin is defined in App.css */
     margin-right: var(--spacing-sm);
 }
 
@@ -182,7 +196,7 @@
   .my-midis-header .header-title-group {
     justify-content: center; /* Center title and icon */
     text-align: center;
-    margin-right: 0; /* Reset margin */
+    margin-right: 0; /* Reset margin for stacked layout */
   }
   .my-midis-header h1 {
     font-size: 1.875rem; /* ~30px */
@@ -195,5 +209,16 @@
   }
   .my-midis-grid {
     /* Uses responsive .midi-grid styles from HomePage.css */
+    /* e.g., grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); */
   }
 }
+
+/* Ensure global .midi-grid styles from HomePage.css are applied if not overridden here */
+/* For example, if HomePage.css has:
+.midi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--spacing-xl);
+}
+Then .my-midis-grid will inherit these unless you specify differently.
+*/

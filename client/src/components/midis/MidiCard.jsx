@@ -2,13 +2,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { trackMidiDownload, getMidiFileStreamUrl } from '../../services/apiMidis';
-import { usePlayer } from '../../contexts/PlayerContext'; // Import global player context
-import { 
-    FaEye, FaDownload, FaCalendarAlt, FaUserEdit, FaMusic, 
-    FaTachometerAlt, FaPlay, FaPause, FaInfoCircle // Added FaPlay, FaPause, FaInfoCircle
+import { usePlayer } from '../../contexts/PlayerContext';
+import {
+    FaEye, FaDownload, FaCalendarAlt, FaUserEdit, FaMusic,
+    FaTachometerAlt, FaPlay, FaPause, FaInfoCircle,
+    FaLock // THÊM ICON KHÓA
 } from 'react-icons/fa';
-import '../../assets/css/MidiCard.css';
+import '../../assets/css/MidiCard.css'; // Sẽ cập nhật file này
 
+// ... (formatDate, formatFileSize không đổi)
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
   try {
@@ -28,19 +30,18 @@ const formatFileSize = (bytes) => {
     return `${value} ${['B', 'KB', 'MB', 'GB'][i]}`;
 };
 
+
 const MidiCard = ({ midi }) => {
-  const { 
-    playMidi, 
-    togglePlay, 
-    currentPlayingMidi, 
+  const {
+    playMidi,
+    togglePlay,
+    currentPlayingMidi,
     isPlaying: globalIsPlaying,
-    isPianoSamplerReady, // To disable play button if piano isn't ready
-    isLoadingPlayer // To disable play button if player is busy
+    isPianoSamplerReady,
+    isLoadingPlayer
   } = usePlayer();
 
   if (!midi || !midi._id) {
-    // Handle cases where midi prop is missing or invalid
-    // This could be a simple placeholder or null to render nothing
     console.warn("MidiCard received invalid or missing midi prop:", midi);
     return (
         <div className="midi-card midi-card-error-placeholder">
@@ -51,8 +52,7 @@ const MidiCard = ({ midi }) => {
 
   const handleDownload = async (e) => {
     e.preventDefault();
-    e.stopPropagation(); // Prevent card's Link navigation
-
+    e.stopPropagation();
     if (!midi.fileId) {
       alert("MIDI file information not available for download.");
       return;
@@ -66,8 +66,6 @@ const MidiCard = ({ midi }) => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      // Note: Download count update would ideally come from a re-fetch or optimistic update
-      // For now, it's handled on the detail page after download.
     } catch (error) {
       console.error("Error tracking download or initiating download:", error);
       alert("Could not initiate download. Please try again.");
@@ -76,41 +74,48 @@ const MidiCard = ({ midi }) => {
 
   const handlePlayButtonClick = (e) => {
     e.preventDefault();
-    e.stopPropagation(); // Prevent card's Link navigation
-
+    e.stopPropagation();
     if (currentPlayingMidi && currentPlayingMidi._id === midi._id) {
-      togglePlay(); // Toggle play/pause for the currently loaded MIDI
+      togglePlay();
     } else {
-      playMidi(midi); // Load and play this new MIDI
+      playMidi(midi);
     }
   };
 
-  // Determine if this MIDI is the one active in the global player
   const isThisMidiActiveInGlobalPlayer = currentPlayingMidi && currentPlayingMidi._id === midi._id;
   const PlayButtonIcon = isThisMidiActiveInGlobalPlayer && globalIsPlaying ? FaPause : FaPlay;
   const playButtonTitle = isThisMidiActiveInGlobalPlayer && globalIsPlaying ? "Pause" : "Play";
   const playButtonDisabled = !isPianoSamplerReady || isLoadingPlayer;
 
-
   const thumbnailUrl = midi.thumbnail_url || `/api/midis/placeholder-thumbnail/${(parseInt(midi._id.slice(-2), 16) % 10) + 1}.png`;
 
+  // Xác định class cho card private
+  const cardClasses = `midi-card ${!midi.is_public ? 'midi-card-private' : ''}`;
+
   return (
-    <div className="midi-card">
+    <div className={cardClasses}> {/* Sử dụng cardClasses */}
+      {/* Dải băng Private (ví dụ) */}
+      {!midi.is_public && (
+        <div className="private-indicator-banner">
+          <FaLock /> Private
+        </div>
+      )}
+
       <Link to={`/midi/${midi._id}`} className="card-link-wrapper" title={`View details for ${midi.title}`}>
         <div className="midi-card-thumbnail-container">
-          <img 
-            src={thumbnailUrl} 
-            alt={`${midi.title} thumbnail`} 
-            className="midi-card-thumbnail" 
-            loading="lazy" // Lazy load images for better performance
+          <img
+            src={thumbnailUrl}
+            alt={`${midi.title} thumbnail`}
+            className="midi-card-thumbnail"
+            loading="lazy"
           />
           <div className="thumbnail-overlay">
-            {/* The play button is now separate, but you can keep a visual cue if desired */}
-            {/* <span className="play-icon-overlay">▶</span> */}
+            {/* Overlay content if any */}
           </div>
         </div>
         <div className="midi-card-content">
           <h3 className="midi-card-title" title={midi.title}>
+            {!midi.is_public && <FaLock className="title-lock-icon" title="Private MIDI" />} {/* Icon khóa nhỏ cạnh title */}
             {midi.title || 'Untitled MIDI'}
           </h3>
           <p className="midi-card-artist" title={midi.artist || 'Unknown Artist'}>
@@ -134,31 +139,31 @@ const MidiCard = ({ midi }) => {
           <span title={`Uploaded on ${formatDate(midi.upload_date)}`}><FaCalendarAlt className="icon" /> {formatDate(midi.upload_date)}</span>
         </div>
         <div className="midi-card-actions">
-          <button 
-            onClick={handlePlayButtonClick} 
-            className="btn-card btn-play-card" 
+          <button
+            onClick={handlePlayButtonClick}
+            className="btn-card btn-play-card"
             title={playButtonTitle}
-            disabled={playButtonDisabled}
+            disabled={playButtonDisabled || !midi.is_public} // Vô hiệu hóa play nếu private (trừ khi đang ở My MIDIs và có logic khác)
             aria-label={playButtonTitle}
           >
             <PlayButtonIcon />
           </button>
-          <button 
-            onClick={handleDownload} 
-            className="btn-card btn-download-card" 
+          <button
+            onClick={handleDownload}
+            className="btn-card btn-download-card"
             title="Download MIDI"
-            disabled={!midi.fileId}
+            disabled={!midi.fileId || !midi.is_public} // Vô hiệu hóa download nếu private
             aria-label="Download MIDI"
           >
             <FaDownload />
           </button>
-          <Link 
-            to={`/midi/${midi._id}`} 
-            className="btn-card btn-view-card" 
+          <Link
+            to={`/midi/${midi._id}`}
+            className="btn-card btn-view-card"
             title="View Details"
             aria-label="View MIDI Details"
           >
-            <FaInfoCircle/> {/* Changed from text "View" to an icon */}
+            <FaInfoCircle/>
           </Link>
         </div>
       </div>
