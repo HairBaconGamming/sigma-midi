@@ -1,5 +1,5 @@
 // client/src/pages/UploadPage.jsx
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react'; // Removed useEffect
 import { useNavigate } from 'react-router-dom';
 import { uploadMidiFile } from '../services/apiMidis';
 import {
@@ -39,20 +39,12 @@ const UploadPage = () => {
   const navigate = useNavigate();
 
   const resetSomeMetadataFields = useCallback(() => {
-    // Don't reset title if user typed it, but reset if it was auto-filled from previous file
-    // For simplicity, we can reset fields that are most likely auto-filled
-    // setArtist(''); // Keep if user typed
-    // setDescription(''); // Keep
     setGenre('');
-    // setTags(''); // Keep
     setDurationSeconds('');
     setKeySignature('');
     setTimeSignature('');
-    // setDifficulty(''); // Keep
     setInstrumentation('');
-    // setArrangementBy(''); // Keep
     setBpm('');
-    // setThumbnailUrl(''); // Keep
   }, []);
 
 
@@ -81,7 +73,6 @@ const UploadPage = () => {
 
       if (toneMidi.header.keySignatures && toneMidi.header.keySignatures.length > 0) {
         const ks = toneMidi.header.keySignatures[0];
-        // Tone.js might return key like "C#", scale "major" or "minor"
         let keyName = ks.key;
         if (ks.scale === "major") keyName += " Major";
         else if (ks.scale === "minor") keyName += " minor";
@@ -90,7 +81,7 @@ const UploadPage = () => {
         setKeySignature('');
       }
 
-      let instruments = new Set(); // Use Set to avoid duplicates
+      let instruments = new Set();
       toneMidi.tracks.forEach(track => {
         if (track.instrument && track.instrument.name && track.instrument.name.trim() !== "") {
             instruments.add(track.instrument.name.trim());
@@ -106,7 +97,7 @@ const UploadPage = () => {
 
       if (!title.trim() && midiFile.name) {
         let suggestedTitle = midiFile.name.replace(/\.(mid|midi)$/i, '').replace(/[_-]/g, ' ');
-        suggestedTitle = suggestedTitle.replace(/\b\w/g, l => l.toUpperCase()); // Capitalize each word
+        suggestedTitle = suggestedTitle.replace(/\b\w/g, l => l.toUpperCase());
         setTitle(suggestedTitle);
       }
 
@@ -116,16 +107,16 @@ const UploadPage = () => {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [title]); // Add title to dependencies for the auto-fill logic
+  }, [title]);
 
   const onDrop = useCallback(acceptedFiles => {
     if (acceptedFiles && acceptedFiles.length > 0) {
       const selectedFile = acceptedFiles[0];
-      const allowedMimeTypes = ['audio/midi', 'audio/mid', 'application/x-midi'];
+      // const allowedMimeTypes = ['audio/midi', 'audio/mid', 'application/x-midi']; // This was declared but not used for validation here
       const allowedExtensions = ['.mid', '.midi'];
       const fileExtension = selectedFile.name.slice(selectedFile.name.lastIndexOf('.')).toLowerCase();
       
-      console.log("[UploadPage onDrop] Dragged file:", selectedFile.name, "Reported type:", selectedFile.type);
+      console.log("[UploadPage onDrop] Selected file:", selectedFile.name, "Reported type:", selectedFile.type, "Size:", selectedFile.size);
 
       if (allowedExtensions.includes(fileExtension)) {
         if (selectedFile.size > 15 * 1024 * 1024) { // 15MB limit
@@ -152,12 +143,13 @@ const UploadPage = () => {
     accept: {
         'audio/midi': ['.mid', '.midi'],
         'audio/mid': ['.mid', '.midi'],
-        'application/x-midi': ['.mid', '.midi']
+        'application/x-midi': ['.mid', '.midi'],
+        'application/octet-stream': ['.mid', '.midi'] // Explicitly allow octet-stream if extension matches
     },
     multiple: false,
-    noClick: true, // Disable click to open dialog if file is already selected
+    noClick: true,
     noKeyboard: true,
-    maxSize: 15 * 1024 * 1024,
+    maxSize: 15 * 1024 * 1024, // 15MB
     onDropRejected: (rejectedFiles) => {
         if (rejectedFiles && rejectedFiles.length > 0) {
             const firstError = rejectedFiles[0].errors[0];
@@ -166,7 +158,7 @@ const UploadPage = () => {
             } else if (firstError.code === 'file-invalid-type') {
                 setError('Invalid file type. Please upload a .mid or .midi file.');
             } else {
-                setError('File rejected. Please try another file.');
+                setError(`File rejected: ${firstError.message}. Please try another file.`);
             }
         }
     }
@@ -176,16 +168,15 @@ const UploadPage = () => {
     setFile(null);
     setPreviewFileName('');
     resetSomeMetadataFields();
-    // Reset the actual file input if you have one (not directly used by dropzone's getInputProps)
-    const fileInput = document.getElementById('midiFileManual');
-    if (fileInput) fileInput.value = null;
+    // const fileInput = document.getElementById('midiFileManual'); // This was for a commented-out input
+    // if (fileInput) fileInput.value = null;
   };
 
-  const handleManualFileSelect = (e) => {
-    if (e.target.files && e.target.files.length > 0) {
-        onDrop([e.target.files[0]]); // Use the onDrop logic for consistency
-    }
-  };
+  // const handleManualFileSelect = (e) => { // This function is for a commented-out input
+  //   if (e.target.files && e.target.files.length > 0) {
+  //       onDrop([e.target.files[0]]);
+  //   }
+  // };
 
 
   const onSubmit = async (e) => {
@@ -194,7 +185,29 @@ const UploadPage = () => {
     if (!title.trim()) { setError('Title is required.'); return; }
 
     const formDataPayload = new FormData();
-    formDataPayload.append('midiFile', file);
+    
+    let fileToUpload = file;
+    const fileExtension = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+    const validMidiExtensions = ['.mid', '.midi'];
+
+    // If browser reports a generic octet-stream but extension is valid MIDI,
+    // try to send it with a more specific 'audio/midi' type.
+    if (file.type === 'application/octet-stream' && validMidiExtensions.includes(fileExtension)) {
+        console.warn(`[UploadPage] File "${file.name}" reported as application/octet-stream by browser. Attempting to set MIME type to audio/midi for upload.`);
+        try {
+            // Create a new File object with the 'audio/midi' MIME type.
+            // The original file content (ArrayBuffer) is passed as the first argument.
+            fileToUpload = new File([file], file.name, { type: 'audio/midi' });
+        } catch (reconstructError) {
+            console.error("[UploadPage] Error trying to reconstruct File object with new MIME type:", reconstructError);
+            // Fallback to using the original file if reconstruction fails.
+            fileToUpload = file; 
+        }
+    }
+    
+    console.log("[UploadPage onSubmit] Uploading file:", fileToUpload.name, "With type:", fileToUpload.type);
+
+    formDataPayload.append('midiFile', fileToUpload);
     formDataPayload.append('title', title.trim());
     formDataPayload.append('artist', artist.trim());
     formDataPayload.append('description', description.trim());
@@ -221,7 +234,8 @@ const UploadPage = () => {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
             setUploadProgress(percentCompleted);
         } else {
-            setUploadProgress(50); // Indeterminate
+            // If total size is not available, show a generic progress or just set to 50%
+            setUploadProgress(50); 
         }
       });
       setSuccess(res.data.msg || 'MIDI uploaded successfully!');
@@ -259,7 +273,7 @@ const UploadPage = () => {
           <div className="form-section dropzone-section">
             <h4><FaMusic className="icon"/> MIDI File {isAnalyzing && <span className="analyzing-indicator">(Analyzing...)</span>}</h4>
             <div {...getRootProps()} className={`dropzone ${isDragActive ? 'active' : ''} ${isDragReject ? 'reject' : ''}`}>
-              <input {...getInputProps()} /> {/* This input is hidden by react-dropzone */}
+              <input {...getInputProps()} />
               <FaFileUpload className="dropzone-icon" />
               {isDragActive && !isDragReject && <p>Drop the MIDI file here ...</p>}
               {!isDragActive && !previewFileName && !file && <p>Drag 'n' drop a MIDI file here, or <button type="button" onClick={open} className="btn-link-style">click to select</button></p>}
@@ -267,13 +281,11 @@ const UploadPage = () => {
               {!isDragActive && (file || previewFileName) && !isDragReject && <p>File selected. Drag another or <button type="button" onClick={open} className="btn-link-style">choose different</button>.</p>}
               <p className="dropzone-hint">(.mid, .midi files only, max 15MB)</p>
             </div>
-            {/* Manual file input as fallback or alternative, hidden if dropzone is primary */}
-            {/* <input type="file" id="midiFileManual" onChange={handleManualFileSelect} accept=".mid,.midi" style={{display: 'none'}} /> */}
             {previewFileName && (
               <div className="file-preview">
                 <FaMusic className="file-icon-preview" />
                 <span title={previewFileName}>{previewFileName}</span>
-                <button type="button" onClick={removeFile} className="remove-file-btn" title="Remove file">
+                <button type="button" onClick={removeFile} className="remove-file-btn" title="Remove file" aria-label="Remove selected file">
                   <FaTimesCircle />
                 </button>
               </div>
@@ -339,9 +351,9 @@ const UploadPage = () => {
                     name="is_public"
                     checked={is_public}
                     onChange={(e) => setIsPublic(e.target.checked)}
-                    className="custom-checkbox" // Class này để ẩn checkbox gốc
+                    className="custom-checkbox"
                 />
-                <label htmlFor="is_public" className="checkbox-label-text"> {/* Label này sẽ tạo custom checkbox */}
+                <label htmlFor="is_public" className="checkbox-label-text">
                     <FaGlobe className="label-icon"/> Make this MIDI public (visible to everyone)
                 </label>
             </div>
