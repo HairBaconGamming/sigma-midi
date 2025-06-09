@@ -115,7 +115,6 @@
 }
 /* Hover effect is on MidiCard itself, no need to repeat here unless for the wrapper specifically */
 
-
 /* Styling for Edit/Delete buttons below the MidiCard */
 .my-midi-actions {
   display: flex;
@@ -124,43 +123,68 @@
   gap: var(--spacing-sm);
   padding: var(--spacing-sm) var(--spacing-lg);
   border-top: 1px solid var(--color-border);
-  background-color: var(--color-background-input); /* Slightly different for action bar */
-  border-bottom-left-radius: var(--border-radius-lg); /* Match card rounding */
+  background-color: var(--color-background-input); /* Nền của thanh action */
+  border-bottom-left-radius: var(--border-radius-lg);
   border-bottom-right-radius: var(--border-radius-lg);
 }
 
 /* General style for icon buttons in this action bar */
 .btn-icon-action {
-  background: none;
-  border: 1px solid transparent; /* Transparent border for consistent sizing on hover */
-  color: var(--color-text-dark);
-  font-size: 1.1rem; /* Size of the icon itself */
-  padding: var(--spacing-xs); /* Padding around the icon */
-  border-radius: var(--border-radius-full); /* Circular */
+  background: none; /* Nền trong suốt */
+  border: 1px solid transparent;
+  /* THAY ĐỔI MÀU ICON MẶC ĐỊNH CHO DỄ THẤY HƠN */
+  color: var(--color-text-medium); /* Hoặc var(--color-text-light) nếu muốn nổi bật hơn nữa */
+  font-size: 1.1rem;
+  padding: var(--spacing-xs);
+  border-radius: var(--border-radius-full);
   cursor: pointer;
   transition: var(--transition-default);
-  display: inline-flex; /* To center icon */
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px; /* Ensure consistent button size */
+  width: 36px;
   height: 36px;
 }
-.btn-icon-action:hover {
-  background-color: var(--color-background-light);
-  color: var(--color-text-light); /* General hover color */
+
+.btn-icon-action svg {
+  width: 1.1em;  /* Kích thước dựa trên font-size của chính SVG */
+  height: 1.1em; /* Kích thước dựa trên font-size của chính SVG */
+  font-size: 1rem; /* Đặt font-size cơ sở cho icon, ví dụ 16px. Điều chỉnh nếu cần. */
+                  /* Hoặc bạn có thể đặt giá trị pixel cố định cho width/height:
+                     width: 18px;
+                     height: 18px;
+                     font-size: initial; // Reset font-size nếu đặt width/height cố định
+                  */
+  display: block; /* Hoặc inline-block */
+  fill: currentColor; /* Đảm bảo icon nhận màu từ color của .btn-icon-action */
 }
-.btn-icon-action:focus-visible { /* Ensure focus is visible */
+
+.btn-icon-action:hover {
+  background-color: var(--color-background-light); /* Nền khi hover */
+  /* Màu icon khi hover sẽ được đặt riêng cho từng nút bên dưới */
+}
+
+.btn-icon-action:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
+  box-shadow: 0 0 0 2px var(--color-primary-light); /* Thêm shadow cho focus */
 }
 
 
 .btn-edit-midi:hover {
-  color: var(--color-warning); /* Specific hover color for edit */
+  color: var(--color-warning); /* Màu icon Edit khi hover */
 }
+/* Nếu muốn border khi hover cho nút Edit */
+/*
+.btn-edit-midi:hover {
+  color: var(--color-warning);
+  border-color: var(--color-warning);
+  background-color: rgba(var(--color-warning-rgb), 0.1); // Giả sử bạn có --color-warning-rgb
+}
+*/
 
 .btn-delete-midi:hover {
-  color: var(--color-error); /* Specific hover color for delete */
+  color: var(--color-error); /* Màu icon Delete khi hover */
 }
 
 /* Inline loading indicator for when fetching updates but some MIDIs are already shown */
