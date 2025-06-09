@@ -508,6 +508,17 @@
   border: 1px dashed var(--color-border);
 }
 
+.btn-delete-detail-page {
+  background-color: var(--color-error-bg);
+  color: var(--color-error);
+  border: 1px solid var(--color-error);
+}
+.btn-delete-detail-page:hover:not(:disabled) {
+  background-color: var(--color-error);
+  color: var(--color-text-light);
+  border-color: var(--color-error);
+}
+
 @keyframes fadeInItem { /* Animation for sections appearing */
   from { opacity: 0; transform: translateY(15px); }
   to { opacity: 1; transform: translateY(0); }

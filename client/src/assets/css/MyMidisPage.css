@@ -23,10 +23,11 @@
   animation: sectionFadeInUp 0.5s 0.1s ease-out forwards; opacity: 0;
 }
 
-.my-midis-header .header-title-group {
+.my-midis-header .header-title-group { /* NEW: Group for icon and title */
     display: flex;
     align-items: center;
     gap: var(--spacing-md);
+    margin-right: auto; /* Push upload button to the right */
 }
 
 .my-midis-header .header-icon {
@@ -46,7 +47,7 @@
 .btn-upload-new {
   /* Using global .btn */
   background: linear-gradient(45deg, var(--color-secondary), var(--color-secondary-hover));
-  color: #fff;
+  color: #fff; /* Đảm bảo text màu trắng trên nền gradient */
   padding: var(--spacing-sm) var(--spacing-lg);
   font-weight: 600;
   border-radius: var(--border-radius-full);
@@ -59,6 +60,7 @@
 }
 .btn-upload-new svg {
   font-size: 1.2rem; /* Icon size in button */
+  margin-right: var(--spacing-xs); /* Thêm khoảng cách nếu có text */
 }
 
 
@@ -87,9 +89,6 @@
 
 .my-midis-grid {
   /* Uses .midi-grid styles from HomePage.css for consistency */
-  /* We can add specific overrides here if needed */
-  /* Example: slightly different gap or column setup */
-  /* gap: var(--spacing-lg); */
   animation: gridItemsAppear 0.5s 0.3s ease-out forwards; opacity: 0;
 }
 @keyframes gridItemsAppear {
@@ -97,61 +96,77 @@
     to { opacity: 1; }
 }
 
-/* Wrapper for each card to potentially add actions below it */
 .my-midi-card-wrapper {
   display: flex;
-  flex-direction: column; /* Ensures MidiCard takes full height if actions are separate */
-  /* Staggered animation for cards is handled by MidiCard.css or direct child selector in HomePage.css */
-  position: relative; /* For action buttons if absolutely positioned */
-  background-color: var(--color-background-medium); /* Match card bg */
-  border-radius: var(--border-radius-lg); /* Match card radius */
+  flex-direction: column;
+  position: relative;
+  background-color: var(--color-background-medium);
+  border-radius: var(--border-radius-lg);
   box-shadow: var(--shadow-md);
-  overflow: hidden; /* If actions are inside and need clipping */
+  /* overflow: hidden;  Let MidiCard handle its own overflow if needed */
   transition: var(--transition-default);
 }
-.my-midi-card-wrapper:hover {
-    /* Lift effect already on MidiCard itself */
-}
+/* Hover effect is on MidiCard itself, no need to repeat here unless for the wrapper specifically */
 
 
-/* Styling for Edit/Delete buttons if they are placed *below* the MidiCard */
 .my-midi-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-end; /* Align buttons to the right */
+  align-items: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-sm) var(--spacing-lg);
   border-top: 1px solid var(--color-border);
   background-color: var(--color-background-input); /* Slightly different for action bar */
+  border-bottom-left-radius: var(--border-radius-lg); /* Match card rounding */
+  border-bottom-right-radius: var(--border-radius-lg);
 }
 
-.btn-edit-midi, .btn-delete-midi {
-  /* Using global .btn style as a base */
-  padding: var(--spacing-xs) var(--spacing-md);
-  font-size: 0.875rem;
-  font-weight: 600;
-  border-radius: var(--border-radius-sm);
+/* General style for icon buttons in this action bar */
+.btn-icon-action {
+  background: none;
+  border: 1px solid transparent; /* Transparent border for consistent sizing */
+  color: var(--color-text-dark);
+  font-size: 1.1rem; /* Size of the icon itself */
+  padding: var(--spacing-xs); /* Padding around the icon */
+  border-radius: var(--border-radius-full); /* Circular */
+  cursor: pointer;
+  transition: var(--transition-default);
+  display: inline-flex; /* To center icon */
+  align-items: center;
+  justify-content: center;
+  width: 36px; /* Ensure consistent button size */
+  height: 36px;
+}
+.btn-icon-action:hover {
+  background-color: var(--color-background-light);
+  color: var(--color-text-light);
 }
 
-.btn-edit-midi {
-  background-color: transparent;
-  color: var(--color-warning);
-  border: 1.5px solid var(--color-warning);
-}
 .btn-edit-midi:hover {
-  background-color: var(--color-warning-bg);
-  border-color: var(--color-warning); /* Keep border */
-  color: var(--color-warning); /* Keep text color */
+  color: var(--color-warning); /* Specific hover color for edit */
 }
 
-.btn-delete-midi {
-  background-color: transparent;
-  color: var(--color-error);
-  border: 1.5px solid var(--color-error);
-}
 .btn-delete-midi:hover {
-  background-color: var(--color-error-bg);
-  color: var(--color-error);
-  border-color: var(--color-error);
+  color: var(--color-error); /* Specific hover color for delete */
+}
+
+/* Inline loading indicator */
+.loading-container-inline {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-md);
+    color: var(--color-text-dark);
+    font-size: 0.9rem;
+}
+.spinner-inline {
+    width: 20px;
+    height: 20px;
+    border: 3px solid var(--color-background-light);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: var(--spacing-sm);
 }
 
 
@@ -167,6 +182,7 @@
   .my-midis-header .header-title-group {
     justify-content: center; /* Center title and icon */
     text-align: center;
+    margin-right: 0; /* Reset margin */
   }
   .my-midis-header h1 {
     font-size: 1.875rem; /* ~30px */
