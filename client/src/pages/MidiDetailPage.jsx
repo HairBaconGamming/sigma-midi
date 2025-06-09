@@ -158,7 +158,7 @@ const MidiDetailPage = () => {
   };
 
   const handleDeleteFromDetailPage = async () => {
-    if (!midi || !authUser || authUser.id !== midi.uploader?._id) {
+    if (!midi || !authUser || authUser._id !== midi.uploader?._id) {
       alert("You are not authorized to delete this MIDI.");
       return;
     }
@@ -238,42 +238,6 @@ const MidiDetailPage = () => {
       ? currentPlayingMidi.duration
       : midi.duration_seconds
   );
-
-  console.log("--- DEBUG DELETE BUTTON ---");
-  console.log("authUser:", authUser);
-  console.log("midi object:", midi);
-  console.log("midi.uploader:", midi?.uploader); // Dùng optional chaining
-
-  if (authUser) {
-    console.log("authUser.id:", authUser.id, "(type:", typeof authUser.id, ")");
-  } else {
-    console.log("authUser is null or undefined");
-  }
-
-  if (midi && midi.uploader) {
-    console.log(
-      "midi.uploader._id:",
-      midi.uploader._id,
-      "(type:",
-      typeof midi.uploader._id,
-      ")"
-    );
-    if (authUser) {
-      const idsMatch = authUser.id === midi.uploader._id;
-      console.log(`IDs match (authUser.id === midi.uploader._id): ${idsMatch}`);
-      if (!idsMatch) {
-        console.error(
-          "IDs DO NOT MATCH! authUser.id:",
-          authUser.id,
-          "midi.uploader._id:",
-          midi.uploader._id
-        );
-      }
-    }
-  } else {
-    console.log("midi or midi.uploader is null or undefined");
-  }
-  console.log("--- END DEBUG DELETE BUTTON ---");
 
   return (
     <>
@@ -392,7 +356,7 @@ const MidiDetailPage = () => {
             >
               <PlayButtonIcon className="icon" /> {playButtonText}
             </button>
-            {authUser && midi.uploader && authUser.id === midi.uploader._id && (
+            {authUser && midi.uploader && authUser._id === midi.uploader._id && (
               <button
                 onClick={handleDeleteFromDetailPage}
                 className="btn-detail-action btn-delete-detail-page" /* Tạo style riêng nếu cần */
