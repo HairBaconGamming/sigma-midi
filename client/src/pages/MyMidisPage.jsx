@@ -114,14 +114,14 @@ const MyMidisPage = () => {
               {/* Actions specific to MyMidisPage */}
               <div className="my-midi-actions">
                 <Link to={`/midi/edit/${midi._id}`} className="btn btn-icon-action btn-edit-midi" title="Edit MIDI">
-                  <FaEdit />
+                  Edit<FaEdit />
                 </Link>
                 <button
                   onClick={() => handleDeleteMidi(midi._id, midi.title)}
                   className="btn btn-icon-action btn-delete-midi"
                   title="Delete MIDI"
                 >
-                  <FaTrash />
+                  Delete<FaTrash />
                 </button>
               </div>
             </div>
