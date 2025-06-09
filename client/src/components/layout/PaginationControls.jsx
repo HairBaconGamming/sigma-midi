@@ -51,7 +51,7 @@ const PaginationControls = ({ currentPage, totalPages, onPageChange }) => {
                 className="pagination-btn"
                 title="First Page"
             >
-                <FaAngleDoubleLeft /> <span className="pagination-btn-text">Đầu</span>
+                <FaAngleDoubleLeft /> <span className="pagination-btn-text">First</span>
             </button>
         );
     }
@@ -65,7 +65,7 @@ const PaginationControls = ({ currentPage, totalPages, onPageChange }) => {
             className="pagination-btn"
             title="Previous Page"
         >
-            <FaAngleLeft /> <span className="pagination-btn-text">Trở về</span>
+            <FaAngleLeft /> <span className="pagination-btn-text">Back</span>
         </button>
     );
 
@@ -105,7 +105,7 @@ const PaginationControls = ({ currentPage, totalPages, onPageChange }) => {
             className="pagination-btn"
             title="Next Page"
         >
-           <span className="pagination-btn-text">Tiếp theo</span> <FaAngleRight />
+           <span className="pagination-btn-text">Next</span> <FaAngleRight />
         </button>
     );
     
@@ -119,7 +119,7 @@ const PaginationControls = ({ currentPage, totalPages, onPageChange }) => {
                 className="pagination-btn"
                 title="Last Page"
             >
-                <span className="pagination-btn-text">Cuối</span> <FaAngleDoubleRight />
+                <span className="pagination-btn-text">Last</span> <FaAngleDoubleRight />
             </button>
         );
     }
