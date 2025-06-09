@@ -215,6 +215,33 @@
   border-color: var(--color-border-hover);
 }
 
+.midi-card-actions .btn-play-card {
+  /* Example: Make it stand out a bit if it's the primary action */
+  background-color: var(--color-secondary); /* Or your preferred play color */
+  color: var(--color-text-light);
+  border: 1px solid var(--color-secondary-hover);
+}
+.midi-card-actions .btn-play-card:hover:not(:disabled) {
+  background-color: var(--color-secondary-hover);
+}
+.midi-card-actions .btn-play-card:disabled {
+    background-color: var(--color-background-light); /* Or a more muted color */
+    color: var(--color-text-disabled);
+    border-color: var(--color-border);
+    opacity: 0.7;
+}
+
+.midi-card-error-placeholder {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px; /* Adjust as needed */
+    border: 1px dashed var(--color-error);
+    color: var(--color-error);
+    text-align: center;
+    padding: var(--spacing-md);
+}
+
 /* Grid styling (already in HomePage.css, ensure consistency) */
 /* .midi-grid {
   display: grid;
