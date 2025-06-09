@@ -6,14 +6,14 @@ import {
   FaDownload, FaPlayCircle, FaPauseCircle, FaUser, FaCalendarAlt, FaInfoCircle,
   FaTachometerAlt, FaMusic, FaEye, FaUserEdit, FaArrowLeft, FaTags, FaGuitar,
   FaStopwatch, FaStarHalfAlt, FaClipboardList
-  // FaShareAlt, FaHeart, FaRegHeart // For future features
 } from 'react-icons/fa';
 import { Helmet } from 'react-helmet-async';
-import { usePlayer } from '../contexts/PlayerContext'; // Import global player context
-import { useAuth } from '../contexts/AuthContext';   // For user data, e.g., owner checks
+import { usePlayer } from '../contexts/PlayerContext'; // Import the global player context
+import { useAuth } from '../contexts/AuthContext';
 
 import '../assets/css/MidiDetailPage.css';
 
+// A clear and consistent date formatting utility.
 const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     try {
@@ -25,33 +25,37 @@ const formatDate = (dateString) => {
     }
 };
 
+// A clear and consistent time formatting utility.
 const formatTime = (seconds) => {
-    if (isNaN(seconds) || seconds === null || seconds === undefined || seconds < 0) return 'N/A'; // Changed from 0:00 to N/A for consistency
+    if (isNaN(seconds) || seconds === null || seconds === undefined || seconds < 0) return 'N/A';
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60).toString().padStart(2, '0');
-    return `${m}m ${s}s`; // Changed format to "Xm YYs" for clarity
+    return `${m}m ${s}s`;
 };
 
 
 const MidiDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user: authUser } = useAuth(); // Get authenticated user for potential owner actions
+  const { user: authUser } = useAuth();
 
-  // Global Player context
+  // Deconstructing the global PlayerContext to control the site-wide player.
+  // This is a great example of centralizing complex state.
   const { 
-    playMidi, // Function to start playing a MIDI in the global player
-    togglePlay, // Function to toggle play/pause of the currently loaded MIDI in global player
+    playMidi,
+    togglePlay,
     currentPlayingMidi, 
     isPlaying: globalIsPlaying,
-    isPianoSamplerReady, // Check if the global piano is ready
+    isPianoSamplerReady,
     isLoadingPlayer: isGlobalPlayerLoading,
   } = usePlayer();
 
-  const [midi, setMidi] = useState(null); // Local state for this page's MIDI details
-  const [loading, setLoading] = useState(true); // Loading state for fetching this page's MIDI details
+  const [midi, setMidi] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // This effect is now solely responsible for fetching page-specific data,
+  // which is a perfect separation of concerns.
   useEffect(() => {
     const fetchMidiDetails = async () => {
       setLoading(true);
@@ -66,13 +70,13 @@ const MidiDetailPage = () => {
         } else {
             setError('An error occurred while loading MIDI details. Please try again later.');
         }
-        setMidi(null); // Clear previous midi data on error
+        setMidi(null);
       } finally {
         setLoading(false);
       }
     };
     fetchMidiDetails();
-  }, [id]);
+  }, [id]); // Correctly re-runs only when the page ID changes.
 
   const handleDownload = async () => {
     if (!midi || !midi.fileId) {
@@ -95,25 +99,25 @@ const MidiDetailPage = () => {
     }
   };
 
+  // This handler smartly interacts with the global player context.
   const handlePlayButtonClick = () => {
     if (!midi) return;
-
-    // If this MIDI is already the one in the global player, just toggle its state
-    if (currentPlayingMidi && currentPlayingMidi._id === midi._id) {
-      togglePlay(); // Toggle play/pause for the already loaded MIDI
+    
+    // If this MIDI is already loaded in the global player, just toggle play/pause.
+    if (currentPlayingMidi?._id === midi._id) {
+      togglePlay();
     } else {
-      // If a different MIDI is playing, or no MIDI, load and play this one
-      playMidi(midi); // This will load, parse, schedule, and play in the global context
+      // Otherwise, tell the global player to load and play this new MIDI.
+      playMidi(midi);
     }
   };
 
-  // Determine if the MIDI displayed on this page is the one currently active in the global player
-  const isThisMidiActiveInGlobalPlayer = currentPlayingMidi && currentPlayingMidi._id === midi?._id;
+  // State derived from the global context to control this page's UI.
+  const isThisMidiActiveInGlobalPlayer = currentPlayingMidi?._id === midi?._id;
   const playButtonText = isThisMidiActiveInGlobalPlayer && globalIsPlaying ? 'Pause in Bar' : 'Play in Bar';
   const PlayButtonIcon = isThisMidiActiveInGlobalPlayer && globalIsPlaying ? FaPauseCircle : FaPlayCircle;
 
-
-  // --- Meta Tags for SEO and Social Sharing ---
+  // --- Meta Tags for SEO and Social Sharing (Excellent Addition) ---
   const pageTitle = midi ? `${midi.title} by ${midi.artist || 'Unknown Artist'} - sigmaMIDI` : 'MIDI Details - sigmaMIDI';
   const pageDescription = midi ? `Listen to, download, and explore the MIDI file "${midi.title}" by ${midi.artist || 'Unknown Artist'}. Genre: ${midi.genre || 'N/A'}. Uploaded by ${midi.uploader?.username || 'User'}.` : 'View details for this MIDI file on sigmaMIDI, the ultimate MIDI repository.';
   const pageUrl = window.location.href;
@@ -131,30 +135,35 @@ const MidiDetailPage = () => {
   if (error) return <p className="alert-message alert-error container">{error}</p>;
   if (!midi) return <p className="no-results-message-page container">MIDI not found or not accessible.</p>;
 
-  // Safely access uploader info
   const uploaderUsername = midi.uploader?.username || 'Unknown User';
-  const uploaderIdForLink = midi.uploader?._id; // Will be undefined if no uploader
-  const displayDuration = formatTime(currentPlayingMidi && currentPlayingMidi._id === midi._id 
-                                      ? currentPlayingMidi.duration // Prefer duration from global player if it's this MIDI
-                                      : midi.duration_seconds);     // Otherwise, use static duration
+  const uploaderIdForLink = midi.uploader?._id;
+  
+  // Smartly choose the duration source: prefer the accurate, parsed duration from the
+  // active player context, otherwise fall back to the DB value.
+  const displayDuration = formatTime(isThisMidiActiveInGlobalPlayer 
+                                      ? currentPlayingMidi.duration
+                                      : midi.duration_seconds);
 
   return (
     <>
+      {/* Dynamic head management for SEO is a professional feature. */}
       <Helmet>
         <title>{pageTitle}</title>
         <meta name="title" content={pageTitle} />
         <meta name="description" content={pageDescription} />
         <link rel="canonical" href={pageUrl} />
         
+        {/* Open Graph / Facebook tags */}
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDescription} />
         <meta property="og:url" content={pageUrl} />
-        <meta property="og:image" content={new URL(imageUrl, window.location.origin).href} /> {/* Ensure absolute URL */}
+        {/* Using `new URL()` ensures the image URL is absolute, which is required. */}
+        <meta property="og:image" content={new URL(imageUrl, window.location.origin).href} />
         <meta property="og:type" content="music.song" />
         <meta property="og:site_name" content="sigmaMIDI" />
         {midi.artist && <meta property="music:musician" content={midi.artist} />}
-        {/* Add more OG tags like music:duration, music:album, etc. if available */}
 
+        {/* Twitter tags */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={pageTitle} />
         <meta name="twitter:description" content={pageDescription} />
@@ -188,6 +197,7 @@ const MidiDetailPage = () => {
                 <div className="header-meta">
                     <span>
                         <FaUser className="icon" /> Uploaded by:
+                        {/* Safely render a Link only if the uploader ID exists. */}
                         {uploaderIdForLink ? (
                             <Link to={`/profile/${uploaderIdForLink}`} className="uploader-link">{uploaderUsername}</Link>
                         ) : (
@@ -195,6 +205,7 @@ const MidiDetailPage = () => {
                         )}
                     </span>
                     <span><FaCalendarAlt className="icon" /> On: {formatDate(midi.upload_date)}</span>
+                    {/* A robust way to check if the updated date is different from the upload date. */}
                     {midi.last_updated_date && new Date(midi.last_updated_date).toISOString() !== new Date(midi.upload_date).toISOString() && (
                          <span><FaCalendarAlt className="icon" /> Updated: {formatDate(midi.last_updated_date)}</span>
                     )}
@@ -206,6 +217,7 @@ const MidiDetailPage = () => {
               <button 
                 onClick={handlePlayButtonClick} 
                 className={`btn-detail-action btn-play-detail ${isThisMidiActiveInGlobalPlayer && globalIsPlaying ? 'playing' : ''}`}
+                // This disabled logic is very robust, preventing actions during loading states.
                 disabled={!isPianoSamplerReady || isGlobalPlayerLoading || !midi.fileId}
                 title={playButtonText}
               >
@@ -217,22 +229,9 @@ const MidiDetailPage = () => {
               <div className="detail-stats">
                   <span><FaEye className="icon" /> {midi.views || 0}</span>
                   <span><FaDownload className="icon" /> {midi.downloads || 0}</span>
-                  {/* Example: <span><FaStarHalfAlt className="icon" /> {midi.rating_avg?.toFixed(1) || 'N/A'} ({midi.rating_count || 0})</span> */}
               </div>
           </div>
           
-          {/* The actual audio player is now the global MiniPlayerBar. 
-              You could add a visual-only piano roll here if desired,
-              which would listen to playbackTime from PlayerContext if currentPlayingMidi matches this page's midi.
-              For simplicity, this section is removed if it was purely for audio.
-          */}
-          {/* Example placeholder if you want a visualizer section on this page */}
-          {/* <div className="midi-visualizer-placeholder-on-page">
-             <p>Visualizer for {midi.title} would go here.</p>
-             {isThisMidiActiveInGlobalPlayer && <p>Currently playing in mini-bar. Time: {formatTime(globalPlayerTime)}</p>}
-          </div> */}
-
-
           {midi.description && (
             <section className="midi-detail-section description-section">
               <h3><FaInfoCircle className="icon" /> Description</h3>
