@@ -30,14 +30,14 @@ const Footer = () => {
         </div>
 
         <div className="footer-section links">
-          <h2>Quick Links</h2>
+          <h2 className="footer-heading">Quick Links</h2>
           <ul>
-            <li><a href="/about">About Us</a></li>
-            <li><a href="/faq">FAQ</a></li>
-            <li><a href="/terms">Terms of Service</a></li>
-            <li><a href="/privacy">Privacy Policy</a></li>
+            <li><Link to="/about">About Us</Link></li>
+            <li><Link to="/faq">FAQ</Link></li>
+            <li><Link to="/terms">Terms of Service</Link></li>
+            <li><Link to="/privacy">Privacy Policy</Link></li>
             <li><Link to="/desktop-app"><FaDesktop style={{marginRight: '5px'}}/> Desktop App</Link></li>
-            <li><a href="/contact">Contact</a></li>
+            <li><Link to="/contact">Contact</Link></li>
           </ul>
         </div>
 

@@ -1,7 +1,7 @@
 // client/src/App.jsx
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import { HelmetProvider } from 'react-helmet-async'; // <-- ENSURE THIS IMPORT IS PRESENT
+import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { PlayerProvider } from './contexts/PlayerContext';
 import Navbar from './components/layout/Navbar';
@@ -19,33 +19,35 @@ import UserProfilePage from './pages/UserProfilePage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import DesktopAppPage from './pages/DesktopAppPage';
 
+// Import new info pages
+import AboutUsPage from './pages/info/AboutUsPage';
+import FAQPage from './pages/info/FAQPage';
+import TermsOfServicePage from './pages/info/TermsOfServicePage';
+import PrivacyPolicyPage from './pages/info/PrivacyPolicyPage';
+import ContactPage from './pages/info/ContactPage';
+
 import './assets/css/App.css';
 
 const PrivateRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   if (loading) {
     return (
-      <div className="loading-container global-loading"> {/* Use global loading style */}
+      <div className="loading-container global-loading">
         <div className="spinner"></div>
-        <p>Verifying Authentication...</p> {/* More specific message */}
+        <p>Verifying Authentication...</p>
       </div>
     );
   }
-  return isAuthenticated ? children : <Navigate to="/login" replace />; // Added replace prop
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
 function AppContent() {
-  const { loadUser, loading: authLoading } = useAuth();
+  const { loading: authLoading } = useAuth(); // Removed loadUser, AuthProvider handles it
 
-  useEffect(() => {
-    // loadUser is called by AuthProvider's own useEffect,
-    // but if you need to trigger it again on some AppContent specific event, keep it.
-    // For initial load, AuthProvider handles it.
-    // If AuthProvider already calls loadUser, you might not need this useEffect here.
-    // loadUser(); 
-  }, [loadUser]); // Be mindful of re-triggering loadUser if not necessary
+  // useEffect(() => {
+  //   // loadUser(); // This is likely redundant if AuthProvider's useEffect calls it
+  // }, [loadUser]);
 
-  // authLoading from useAuth() indicates if the initial user authentication check is complete.
   if (authLoading) {
     return (
       <div className="loading-container global-loading">
@@ -79,6 +81,14 @@ function AppContent() {
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/profile/:userId" element={<UserProfilePage />} />
           <Route path="/desktop-app" element={<DesktopAppPage />} />
+
+          {/* New Info Page Routes */}
+          <Route path="/about" element={<AboutUsPage />} />
+          <Route path="/faq" element={<FAQPage />} />
+          <Route path="/terms" element={<TermsOfServicePage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
@@ -90,10 +100,8 @@ function AppContent() {
 
 function App() {
   return (
-    // StrictMode can be helpful for development, but sometimes can cause double renders
-    // for useEffects with empty dependency arrays if not careful.
-    <React.StrictMode> 
-      <HelmetProvider> {/* HelmetProvider should be high up, wrapping router usually */}
+    <React.StrictMode> {/* Keep StrictMode for development benefits */}
+      <HelmetProvider>
         <AuthProvider>
           <PlayerProvider>
             <Router>
