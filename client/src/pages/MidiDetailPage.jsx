@@ -11,6 +11,8 @@ import * as Tone from 'tone';
 import { Midi as ToneMidi } from '@tonejs/midi';
 import { Piano } from '@tonejs/piano';
 
+import { usePlayer } from '../../contexts/PlayerContext';
+
 import '../assets/css/MidiDetailPage.css';
 import { useAuth } from '../contexts/AuthContext';
 

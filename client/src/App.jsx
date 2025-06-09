@@ -14,8 +14,10 @@ import UserProfilePage from './pages/UserProfilePage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import DesktopAppPage from './pages/DesktopAppPage'; 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { PlayerProvider } from './contexts/PlayerContext';
 import './assets/css/App.css';
 import Footer from './components/layout/Footer'; // Import Footer
+import MiniPlayerBar from './components/layout/MiniPlayerBar';
 
 const PrivateRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -86,6 +88,7 @@ function AppContent() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      <MiniPlayerBar />
       <Footer />
     </>
   );
@@ -93,11 +96,17 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <AppContent />
-      </Router>
-    </AuthProvider>
+    <React.StrictMode>
+      <HelmetProvider>
+        <AuthProvider>
+          <PlayerProvider>
+            <Router>
+              <AppContent />
+            </Router>
+          </PlayerProvider>
+        </AuthProvider>
+      </HelmetProvider>
+    </React.StrictMode>
   );
 }
 

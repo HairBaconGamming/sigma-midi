@@ -1,0 +1,192 @@
+/* client/src/assets/css/MiniPlayerBar.css */
+.mini-player-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 70px; /* Adjust height as needed */
+  background-color: var(--color-background-medium); /* Darker than main player perhaps */
+  border-top: 1px solid var(--color-border);
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--spacing-lg);
+  color: var(--color-text-light);
+  z-index: 1010; /* Above most content, below modals if any */
+  transform: translateY(100%);
+  transition: transform 0.3s ease-in-out;
+}
+
+.mini-player-bar.visible {
+  transform: translateY(0%);
+}
+
+.player-loading-indicator,
+.player-error-indicator {
+  width: 100%;
+  text-align: center;
+  padding: var(--spacing-md);
+  font-size: 0.9rem;
+}
+.player-error-indicator {
+  color: var(--color-error);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+.player-close-btn-error {
+    background: none;
+    border: none;
+    color: var(--color-text-dark);
+    cursor: pointer;
+    padding: var(--spacing-xs);
+}
+.player-close-btn-error:hover {
+    color: var(--color-error);
+}
+
+
+.mini-player-track-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
+  min-width: 150px; /* Prevent excessive shrinking */
+  max-width: 30%;
+}
+
+/* Add .mini-player-thumbnail styles if you include an image */
+
+.mini-player-text {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* For text truncation */
+}
+
+.mini-player-text .track-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-decoration: none;
+}
+.mini-player-text .track-title:hover {
+  color: var(--color-primary);
+}
+
+.mini-player-text .track-artist {
+  font-size: 0.75rem;
+  color: var(--color-text-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini-player-controls-main {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.mini-player-bar .control-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-medium);
+  font-size: 1.2rem; /* Default icon size */
+  padding: var(--spacing-xs);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+.mini-player-bar .control-btn:hover {
+  color: var(--color-text-light);
+}
+.mini-player-bar .control-btn.play-pause-btn {
+  font-size: 1.6rem; /* Larger play/pause */
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+}
+.mini-player-bar .control-btn.play-pause-btn:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.mini-player-progress-section {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-grow: 1; /* Takes up available space */
+  margin: 0 var(--spacing-md);
+  min-width: 200px;
+}
+
+.mini-player-progress-section .time-current,
+.mini-player-progress-section .time-duration {
+  font-size: 0.75rem;
+  color: var(--color-text-dark);
+  min-width: 35px; /* "0:00" */
+  text-align: center;
+}
+
+.progress-bar-container-mini {
+  flex-grow: 1;
+  height: 6px; /* Slimmer progress bar */
+  background-color: var(--color-background-light);
+  border-radius: var(--border-radius-full);
+  cursor: pointer;
+  overflow: hidden; /* Clip the inner bar */
+}
+
+.progress-bar-mini {
+  height: 100%;
+  background-color: var(--color-primary);
+  border-radius: var(--border-radius-full);
+  transition: width 0.1s linear; /* For smooth updates */
+}
+
+.mini-player-actions-extra {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+.mini-player-actions-extra .volume-btn {
+    font-size: 1.1rem;
+}
+.mini-player-actions-extra .close-player-btn {
+    font-size: 1rem;
+}
+
+
+@media (max-width: 768px) {
+  .mini-player-bar {
+    height: auto; /* Allow wrapping */
+    flex-direction: column;
+    padding: var(--spacing-sm);
+    gap: var(--spacing-xs);
+  }
+  .mini-player-track-info {
+    width: 100%;
+    max-width: 100%;
+    justify-content: center;
+    text-align: center;
+    margin-bottom: var(--spacing-xs);
+  }
+  .mini-player-progress-section {
+    width: 100%;
+    order: 1; /* Move progress below main controls */
+    margin: var(--spacing-xs) 0;
+  }
+  .mini-player-controls-main {
+    order: 2;
+    margin-bottom: var(--spacing-xs);
+  }
+  .mini-player-actions-extra {
+    order: 3;
+    width: 100%;
+    justify-content: space-around;
+  }
+}
