@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   FaSave, FaMusic, FaUser, FaInfoCircle, FaTachometerAlt,
   FaTags, FaGuitar, FaStopwatch, FaStarHalfAlt, FaClipboardList,
-  FaGlobe, FaSignature, FaClock, FaImage, FaUserEdit, FaTimesCircle, FaArrowLeft
+  FaGlobe, FaSignature, FaClock, FaImage, FaUserEdit, FaTimesCircle, FaArrowLeft, FaEdit 
 } from 'react-icons/fa';
 import '../assets/css/UploadPage.css'; // Tái sử dụng CSS từ UploadPage
 
