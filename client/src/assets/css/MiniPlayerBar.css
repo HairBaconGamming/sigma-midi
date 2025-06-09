@@ -86,7 +86,6 @@
   min-width: 0; /* Important for flex truncation */
   max-width: 30%;
 }
-/* Thumbnail can be added back here if desired */
 
 .mini-player-text {
   display: flex;
@@ -130,6 +129,8 @@
   cursor: pointer;
   transition: all 0.2s ease;
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 50%;
 }
 .mini-player-bar .control-btn:hover {
@@ -140,15 +141,24 @@
   transform: scale(0.92);
   transition-duration: 0.1s;
 }
+
 .mini-player-bar .control-btn.play-pause-btn {
-  font-size: 2.2rem;
+  font-size: 1rem; /* Base font-size for relative sizing using `em` unit */
   width: 52px;
   height: 52px;
   background-color: var(--color-primary);
   color: var(--color-background-dark);
   box-shadow: var(--control-primary-glow);
+  padding: 0; /* Reset padding to allow for precise alignment */
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* === THE FIX === */
+.mini-player-bar .control-btn.play-pause-btn svg {
+  width: 1.8em; /* Adjusted to look good on a 52px button */
+  height: 1.8em;
+}
+
 .mini-player-bar .control-btn.play-pause-btn:hover {
   background-color: var(--color-primary-hover);
   transform: scale(1.05);
