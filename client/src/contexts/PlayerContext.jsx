@@ -1,4 +1,3 @@
-// client/src/contexts/PlayerContext.jsx
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import * as Tone from 'tone';
 import { Midi as ToneMidi } from '@tonejs/midi';
@@ -28,7 +27,6 @@ export const PlayerProvider = ({ children }) => {
 
   // Refs for Tone.js and animation
   const pianoRef = useRef(null);
-  // --- FIX: Create a dedicated ref for our volume control node ---
   const volumeNodeRef = useRef(null);
   const parsedMidiFileRef = useRef(null);
   const animationFrameRef = useRef(null);
@@ -36,21 +34,12 @@ export const PlayerProvider = ({ children }) => {
   // --- Core Setup and Cleanup ---
 
   useEffect(() => {
-    // This effect runs only once on mount to initialize the piano and volume node.
     if (!pianoRef.current) {
       console.log("Global Player: Initializing Piano and Volume Node...");
       setIsLoadingPlayer(true);
-
-      // --- FIX: Create our own volume node ---
-      // Set its initial volume and connect it to the master output (speakers).
       volumeNodeRef.current = new Tone.Volume(Tone.gainToDb(0.8)).toDestination();
-
-      // Create the piano instance.
       const piano = new Piano({ velocities: 4, release: true });
-      
-      // --- FIX: Connect the piano to OUR volume node, NOT the destination directly ---
       piano.connect(volumeNodeRef.current);
-
       pianoRef.current = piano;
 
       piano.load()
@@ -63,46 +52,52 @@ export const PlayerProvider = ({ children }) => {
           setPlayerError("Could not load piano sound. " + (err.message || ""));
         })
         .finally(() => {
-            setIsLoadingPlayer(false);
+          setIsLoadingPlayer(false);
         });
     }
 
     return () => {
-      // Cleanup all created Tone.js nodes on unmount.
       pianoRef.current?.dispose();
-      volumeNodeRef.current?.dispose(); // <-- FIX: Dispose our volume node too
+      volumeNodeRef.current?.dispose();
       Tone.Transport.stop();
       Tone.Transport.cancel();
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, []); // Empty dependency array ensures this runs only once.
+  }, []);
 
-  // --- CORRECTED VOLUME/MUTE EFFECT ---
+  // --- Volume/Mute Effect ---
   useEffect(() => {
-    // This effect now reliably controls our dedicated volume node.
     if (volumeNodeRef.current) {
       volumeNodeRef.current.mute = isMuted;
-
-      // Only adjust the volume if not muted.
       if (!isMuted) {
-        // The property path for a Tone.Volume node's volume is `.volume.value`
         volumeNodeRef.current.volume.value = Tone.gainToDb(volume);
       }
     }
-    // This effect should only depend on the state values it controls.
   }, [volume, isMuted]);
 
+  // --- Seamless Looping Logic ---
+  useEffect(() => {
+    Tone.Transport.loop = isLooping;
+    if (isLooping && durationTotal > 0) {
+      Tone.Transport.loopStart = 0;
+      Tone.Transport.loopEnd = durationTotal;
+    }
+  }, [isLooping, durationTotal]);
 
-  // --- All other functions remain the same as they were correct ---
+
+  // --- Core Player Functions ---
 
   const stopCurrentTrackAudio = useCallback((resetTime = true) => {
     Tone.Transport.stop();
     Tone.Transport.cancel();
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     setIsPlaying(false);
-    if (resetTime) setPlaybackTime(0);
+    if (resetTime) {
+      setPlaybackTime(0);
+      Tone.Transport.seconds = 0;
+    }
   }, []);
 
   const clearAndClosePlayer = useCallback(() => {
@@ -127,7 +122,7 @@ export const PlayerProvider = ({ children }) => {
     });
     return true;
   }, []);
-  
+
   const startToneAudioContext = async () => {
     if (Tone.context.state !== 'running') {
       try { await Tone.start(); return true; } catch (e) {
@@ -136,29 +131,31 @@ export const PlayerProvider = ({ children }) => {
     }
     return true;
   };
-  
+
   const playMidi = useCallback(async (midiData) => {
     if (!midiData?.fileId) { setPlayerError("Invalid MIDI data provided."); return; }
     if (!isPianoSamplerReady) { setPlayerError("Piano sound is not ready yet."); return; }
     if (!await startToneAudioContext()) return;
-  
+
     stopCurrentTrackAudio(true);
     setIsLoadingPlayer(true);
     setPlayerError('');
-  
+
     try {
       const midiUrl = getMidiFileStreamUrl(midiData.fileId);
       const parsedMidi = await ToneMidi.fromUrl(midiUrl);
-  
+
       parsedMidiFileRef.current = parsedMidi;
       setCurrentPlayingMidi(midiData);
       setDurationTotal(parsedMidi.duration);
       setIsMidiDataLoaded(true);
-  
-      Tone.Transport.seconds = 0;
+
       if (scheduleNotes()) {
-        Tone.Transport.start(); setIsPlaying(true);
-      } else { throw new Error("Could not schedule MIDI notes."); }
+        Tone.Transport.start();
+        setIsPlaying(true);
+      } else {
+        throw new Error("Could not schedule MIDI notes.");
+      }
     } catch (e) {
       console.error("Global Player: Error in playMidi execution:", e);
       setPlayerError(`Failed to play MIDI: ${e.message}`);
@@ -170,64 +167,87 @@ export const PlayerProvider = ({ children }) => {
 
   const playNextMidi = useCallback(async () => {
     try {
-        const nextMidi = await getRandomMidi(currentPlayingMidi?._id);
-        if (nextMidi) {
-            await playMidi(nextMidi);
-        } else {
-            setIsPlaying(false);
-        }
+      const nextMidi = await getRandomMidi(currentPlayingMidi?._id);
+      if (nextMidi) {
+        await playMidi(nextMidi);
+      } else {
+        stopCurrentTrackAudio(true);
+      }
     } catch (error) {
-        console.error("Global Player: Error fetching next MIDI for autoplay:", error);
-        setIsPlaying(false);
+      console.error("Global Player: Error fetching next MIDI for autoplay:", error);
+      stopCurrentTrackAudio(true);
     }
-  }, [currentPlayingMidi, playMidi]);
+  }, [currentPlayingMidi, playMidi, stopCurrentTrackAudio]);
 
   const updateProgressLoop = useCallback(() => {
     const currentTime = Tone.Transport.seconds;
     setPlaybackTime(currentTime);
 
-    if (currentTime >= durationTotal - 0.05 && durationTotal > 0) {
-      stopCurrentTrackAudio(true);
-      if (isLooping) {
-        if (scheduleNotes()) { Tone.Transport.start(); setIsPlaying(true); }
-      } else if (isAutoplayNext) {
+    if (!isLooping && durationTotal > 0 && currentTime >= durationTotal - 0.1) {
+      if (isAutoplayNext) {
         playNextMidi();
       } else {
+        stopCurrentTrackAudio(true);
         scheduleNotes();
       }
     } else {
       animationFrameRef.current = requestAnimationFrame(updateProgressLoop);
     }
-  }, [durationTotal, isLooping, isAutoplayNext, stopCurrentTrackAudio, scheduleNotes, playNextMidi]);
+  }, [durationTotal, isLooping, isAutoplayNext, playNextMidi, stopCurrentTrackAudio, scheduleNotes]);
 
   useEffect(() => {
-    if (isPlaying) { animationFrameRef.current = requestAnimationFrame(updateProgressLoop); }
-    else if (animationFrameRef.current) { cancelAnimationFrame(animationFrameRef.current); }
+    if (isPlaying) {
+      animationFrameRef.current = requestAnimationFrame(updateProgressLoop);
+    } else if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
   }, [isPlaying, updateProgressLoop]);
 
-  const togglePlay = useCallback(async () => {
-    if (!currentPlayingMidi || !isMidiDataLoaded) return;
-    if (!await startToneAudioContext()) return;
-    
-    if (isPlaying) { Tone.Transport.pause(); setIsPlaying(false); }
-    else { Tone.Transport.start(); setIsPlaying(true); }
-  }, [currentPlayingMidi, isMidiDataLoaded, isPlaying]);
+  // --- FIX: REORDERED FUNCTIONS ---
+  // `seekPlayer` is now defined BEFORE `togglePlay`, which depends on it.
 
   const seekPlayer = useCallback(async (time) => {
     if (!currentPlayingMidi || !isMidiDataLoaded || durationTotal <= 0) return;
     if (!await startToneAudioContext()) return;
-    
+
     const wasPlaying = isPlaying;
-    stopCurrentTrackAudio(false);
-    
+    Tone.Transport.stop();
+    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    setIsPlaying(false);
+
     const newTime = Math.max(0, Math.min(time, durationTotal));
     setPlaybackTime(newTime);
     Tone.Transport.seconds = newTime;
     
     scheduleNotes();
 
-    if (wasPlaying) { Tone.Transport.start(); setIsPlaying(true); }
-  }, [currentPlayingMidi, isMidiDataLoaded, durationTotal, isPlaying, stopCurrentTrackAudio, scheduleNotes]);
+    if (wasPlaying) {
+      Tone.Transport.start();
+      setIsPlaying(true);
+    }
+  }, [currentPlayingMidi, isMidiDataLoaded, durationTotal, isPlaying, scheduleNotes]);
+
+  const togglePlay = useCallback(async () => {
+    if (!currentPlayingMidi || !isMidiDataLoaded) return;
+    if (!await startToneAudioContext()) return;
+    
+    if (isPlaying) {
+      Tone.Transport.pause();
+      setIsPlaying(false);
+    } else {
+      if (playbackTime >= durationTotal - 0.1 && durationTotal > 0) {
+        // Now this call is safe because seekPlayer is already defined.
+        await seekPlayer(0); 
+      }
+      Tone.Transport.start();
+      setIsPlaying(true);
+    }
+  }, [currentPlayingMidi, isMidiDataLoaded, isPlaying, playbackTime, durationTotal, seekPlayer]);
 
   const handleSetVolume = useCallback((newVolume) => {
     const clampedVolume = Math.max(0, Math.min(1, newVolume));
