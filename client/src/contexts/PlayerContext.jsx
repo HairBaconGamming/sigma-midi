@@ -3,20 +3,20 @@ import React, { createContext, useContext, useState, useRef, useCallback, useEff
 import * as Tone from 'tone';
 import { Midi as ToneMidi } from '@tonejs/midi';
 import { Piano } from '@tonejs/piano';
-import { getMidiFileStreamUrl } from '../services/apiMidis'; // Assuming this is where it is
+import { getMidiFileStreamUrl } from '../services/apiMidis';
 
 const PlayerContext = createContext();
 
 export const usePlayer = () => useContext(PlayerContext);
 
 export const PlayerProvider = ({ children }) => {
-  const [currentPlayingMidi, setCurrentPlayingMidi] = useState(null); // Holds { _id, title, artist, fileId, duration_seconds, etc. }
+  const [currentPlayingMidi, setCurrentPlayingMidi] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackTime, setPlaybackTime] = useState(0);
   const [durationTotal, setDurationTotal] = useState(0);
-  const [isMidiDataLoaded, setIsMidiDataLoaded] = useState(false); // If ToneMidi has parsed the file
+  const [isMidiDataLoaded, setIsMidiDataLoaded] = useState(false);
   const [isPianoSamplerReady, setIsPianoSamplerReady] = useState(false);
-  const [isLoadingPlayer, setIsLoadingPlayer] = useState(false); // For loading MIDI or piano
+  const [isLoadingPlayer, setIsLoadingPlayer] = useState(false);
   const [playerError, setPlayerError] = useState('');
   const [isMuted, setIsMuted] = useState(false);
 
@@ -26,7 +26,6 @@ export const PlayerProvider = ({ children }) => {
   const animationFrameRef = useRef(null);
   const toneContextStarted = useRef(false);
 
-  // Initialize Piano once
   useEffect(() => {
     if (!pianoRef.current && !isPianoSamplerReady) {
       console.log("Global Player: Initializing Piano...");
@@ -50,21 +49,29 @@ export const PlayerProvider = ({ children }) => {
     }
   }, [isPianoSamplerReady]);
 
-
-  const cleanupCurrentMidiAudio = useCallback(() => {
+  const stopCurrentTrackAudio = useCallback(() => {
     Tone.Transport.stop();
     Tone.Transport.cancel();
     scheduledEventsRef.current.forEach(id => Tone.Transport.clear(id));
     scheduledEventsRef.current = [];
     if (pianoRef.current && isPianoSamplerReady) {
-      // Release all notes for safety, though triggerAttackRelease should manage them with transport stop
       for (let i = 21; i <= 108; i++) pianoRef.current.keyUp({ midi: i, time: Tone.now() });
     }
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     setIsPlaying(false);
     setPlaybackTime(0);
-    // Don't reset currentPlayingMidi here, it's managed by playMidi function
+    // Note: currentPlayingMidi is NOT reset here.
   }, [isPianoSamplerReady]);
+
+  const clearAndClosePlayer = useCallback(() => {
+    stopCurrentTrackAudio(); // Stop audio and reset playback time
+    setCurrentPlayingMidi(null); // Clear the currently playing MIDI info
+    parsedMidiFileRef.current = null; // Clear parsed MIDI data
+    setIsMidiDataLoaded(false); // Reset MIDI loaded flag
+    setDurationTotal(0); // Reset duration
+    setPlayerError(''); // Clear any errors
+    // isPlaying should already be false from stopCurrentTrackAudio
+  }, [stopCurrentTrackAudio]);
 
 
   const loadAndParseMidi = useCallback(async (midiToLoad) => {
@@ -77,7 +84,7 @@ export const PlayerProvider = ({ children }) => {
       return false;
     }
 
-    cleanupCurrentMidiAudio(); // Clean up before loading new
+    stopCurrentTrackAudio(); // Clean up before loading new
     setIsLoadingPlayer(true);
     setPlayerError('');
     setIsMidiDataLoaded(false);
@@ -88,26 +95,26 @@ export const PlayerProvider = ({ children }) => {
       const parsed = await ToneMidi.fromUrl(midiUrl);
       parsedMidiFileRef.current = parsed;
       setDurationTotal(parsed.duration);
-      setCurrentPlayingMidi(midiToLoad); // Now set the full MIDI object
+      setCurrentPlayingMidi(midiToLoad);
       setIsMidiDataLoaded(true);
       console.log("Global Player: MIDI parsed:", parsed.name);
       return true;
     } catch (e) {
       console.error("Global Player: Error loading/parsing MIDI:", e);
       setPlayerError(`Could not load MIDI: ${e.message}`);
-      setCurrentPlayingMidi(null); // Clear if loading failed
+      setCurrentPlayingMidi(null);
       return false;
     } finally {
       setIsLoadingPlayer(false);
     }
-  }, [isPianoSamplerReady, cleanupCurrentMidiAudio]);
+  }, [isPianoSamplerReady, stopCurrentTrackAudio]);
 
   const scheduleNotesForGlobalPlayer = useCallback(() => {
     if (!parsedMidiFileRef.current || !pianoRef.current || !isPianoSamplerReady) return false;
     
     scheduledEventsRef.current.forEach(id => Tone.Transport.clear(id));
     scheduledEventsRef.current = [];
-    Tone.Transport.cancel();
+    Tone.Transport.cancel(); // Ensure transport is clear before scheduling
 
     parsedMidiFileRef.current.tracks.forEach(track => {
       track.notes.forEach(note => {
@@ -129,9 +136,11 @@ export const PlayerProvider = ({ children }) => {
       try {
         await Tone.start();
         toneContextStarted.current = true;
+        console.log("Global Player: Tone AudioContext started.");
         return true;
       } catch (e) {
         setPlayerError("Audio context error. Please interact with the page.");
+        console.error("Global Player: Error starting Tone AudioContext:", e);
         return false;
       }
     }
@@ -144,12 +153,10 @@ export const PlayerProvider = ({ children }) => {
       setPlaybackTime(currentTime);
       if (currentTime >= durationTotal - 0.05 && durationTotal > 0) {
         console.log("Global Player: MIDI end.");
-        // Option: stop, or loop, or go to next in playlist
         Tone.Transport.stop();
         setIsPlaying(false);
-        setPlaybackTime(0); // Reset for next play
+        setPlaybackTime(0); 
         Tone.Transport.seconds = 0;
-         // Re-schedule for next play from beginning
         if (parsedMidiFileRef.current) scheduleNotesForGlobalPlayer();
       } else {
         animationFrameRef.current = requestAnimationFrame(updateProgressLoop);
@@ -168,41 +175,6 @@ export const PlayerProvider = ({ children }) => {
     };
   }, [isPlaying, updateProgressLoop]);
 
-
-  const playMidi = useCallback(async (midiData) => {
-    if (!midiData || !midiData.fileId) {
-        console.error("Global Player: playMidi called with invalid midiData", midiData);
-        setPlayerError("Invalid MIDI data to play.");
-        return;
-    }
-    if (!isPianoSamplerReady) {
-        setPlayerError("Piano sound is not ready yet. Please wait.");
-        // Optionally, queue this action or try to initialize piano again
-        return;
-    }
-
-    console.log("Global Player: playMidi called for", midiData.title);
-    const audioContextNowReady = await startToneAudioContext();
-    if (!audioContextNowReady) return;
-
-    // If it's a new MIDI or MIDI data isn't loaded for the current one
-    if (!currentPlayingMidi || currentPlayingMidi._id !== midiData._id || !isMidiDataLoaded) {
-        const loaded = await loadAndParseMidi(midiData);
-        if (!loaded) return; // Error handled in loadAndParseMidi
-        // Notes will be scheduled by togglePlayControls or seek
-    }
-    // If already loaded, just ensure time is set and toggle play
-    setPlaybackTime(0); // Start new MIDI from beginning
-    Tone.Transport.seconds = 0;
-    
-    // Now call togglePlayControls to handle actual playback start
-    // Pass true to force play, as this function is explicitly "playMidi"
-    togglePlayControls(true);
-
-  }, [isPianoSamplerReady, currentPlayingMidi, isMidiDataLoaded, loadAndParseMidi, togglePlayControls]);
-
-
-  // Renamed to avoid conflict with isPlaying state
   const togglePlayControls = useCallback(async (forcePlay) => {
     if (!currentPlayingMidi || !isMidiDataLoaded || !isPianoSamplerReady || !pianoRef.current) {
       setPlayerError("Cannot play: Player not fully ready.");
@@ -213,27 +185,48 @@ export const PlayerProvider = ({ children }) => {
 
     const currentTransportState = Tone.Transport.state;
 
-    if (currentTransportState === "started" && forcePlay !== true) { // Pause if playing
+    if (currentTransportState === "started" && forcePlay !== true) {
       Tone.Transport.pause();
       setIsPlaying(false);
-    } else { // Play if paused, stopped, or forcePlay is true
+    } else {
       if (currentTransportState === "stopped" || scheduledEventsRef.current.length === 0) {
-        // If stopped or no events scheduled (e.g., after seek or initial load)
-        // Ensure playbackTime is respected if resuming/seeking,
-        // otherwise it will be 0 for a fresh play.
         Tone.Transport.seconds = playbackTime;
         if (!scheduleNotesForGlobalPlayer()) {
             setPlayerError("Failed to schedule notes.");
             return;
         }
       }
-      // If paused, Tone.Transport.seconds is already at the paused position.
-      // If forcePlay, we ensure it starts regardless of current isPlaying state.
       Tone.Transport.start();
       setIsPlaying(true);
     }
   }, [currentPlayingMidi, isMidiDataLoaded, isPianoSamplerReady, playbackTime, scheduleNotesForGlobalPlayer]);
 
+  const playMidi = useCallback(async (midiData) => {
+    if (!midiData || !midiData.fileId) {
+        console.error("Global Player: playMidi called with invalid midiData", midiData);
+        setPlayerError("Invalid MIDI data to play.");
+        return;
+    }
+    if (!isPianoSamplerReady) {
+        setPlayerError("Piano sound is not ready yet. Please wait.");
+        return;
+    }
+
+    console.log("Global Player: playMidi called for", midiData.title);
+    const audioContextNowReady = await startToneAudioContext();
+    if (!audioContextNowReady) return;
+
+    if (!currentPlayingMidi || currentPlayingMidi._id !== midiData._id || !isMidiDataLoaded) {
+        const loaded = await loadAndParseMidi(midiData);
+        if (!loaded) return;
+    }
+    
+    setPlaybackTime(0); 
+    Tone.Transport.seconds = 0;
+    
+    togglePlayControls(true); // Force play
+
+  }, [isPianoSamplerReady, currentPlayingMidi, isMidiDataLoaded, loadAndParseMidi, togglePlayControls]);
 
   const seekPlayer = useCallback(async (time) => {
     if (!currentPlayingMidi || !isMidiDataLoaded || !parsedMidiFileRef.current || !isPianoSamplerReady || durationTotal <= 0) return;
@@ -247,12 +240,10 @@ export const PlayerProvider = ({ children }) => {
     const wasPlaying = isPlaying;
     if (wasPlaying) Tone.Transport.pause();
     
-    // Release any sounding notes
     if (pianoRef.current) {
         for (let i = 21; i <= 108; i++) pianoRef.current.keyUp({ midi: i, time: Tone.now() });
     }
 
-    // Clear and reschedule
     scheduledEventsRef.current.forEach(id => Tone.Transport.clear(id));
     scheduledEventsRef.current = [];
     Tone.Transport.cancel();
@@ -291,11 +282,12 @@ export const PlayerProvider = ({ children }) => {
     isLoadingPlayer,
     playerError,
     isMuted,
-    playMidi, // Expose this to trigger play from anywhere
-    togglePlay: togglePlayControls, // Expose general toggle
+    playMidi,
+    togglePlay: togglePlayControls,
     seekPlayer,
     togglePlayerMute,
-    stopPlayer: cleanupCurrentMidiAudio, // Expose a way to stop fully
+    stopCurrentTrackAudio, // Renamed
+    clearAndClosePlayer,   // New function for full close
   };
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;

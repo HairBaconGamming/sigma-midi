@@ -14,88 +14,7 @@ router.get("/stream/:fileIdOrFilename", async (req, res) => {
 
     if (!gridFSBucket) {
       console.error(
-        "[Files Route] GridFSBucket not initialized on app instance."
-      );
-      return res
-        .status(500)
-        .send("Server error: File streaming service not ready.");
-    }
-
-    let fileCursor;
-    if (mongoose.Types.ObjectId.isValid(identifier)) {
-      fileCursor = gridFSBucket.find({
-        _id: new mongoose.Types.ObjectId(identifier),
-      });
-    } else {
-      // Nếu không phải ObjectId, coi nó là filename (tên file trong GridFS)
-      fileCursor = gridFSBucket.find({ filename: identifier });
-    }
-
-    const files = await fileCursor.toArray();
-    if (!files || files.length === 0) {
-      return res
-        .status(404)
-        .json({ msg: "No file exists with that identifier." });
-    }
-    const file = files[0];
-
-    if (file.contentType === "audio/midi" || file.contentType === "audio/mid") {
-      const originalFilename = file.metadata?.originalName || file.filename || 'download.mid';
-
-      res.set('Content-Type', file.contentType);
-      res.set('Content-Length', file.length.toString());
-
-      // Use the content-disposition library to generate the header correctly
-      // It handles quoting and encoding for UTF-8 characters.
-      // The `type` can be 'inline' or 'attachment'.
-      res.set('Content-Disposition', contentDisposition(originalFilename, { type: 'inline' }));
-
-      const readStream = gridFSBucket.openDownloadStream(file._id);
-      readStream.on("error", (streamErr) => {
-        console.error("[Files Route] GridFS stream error:", streamErr);
-        // Tránh gửi response nếu header đã được gửi
-        if (!res.headersSent) {
-          res.status(500).send("Error streaming file.");
-        } else {
-          readStream.destroy(); // Hủy stream nếu lỗi xảy ra giữa chừng
-        }
-      });
-      readStream.pipe(res);
-    } else {
-      res
-        .status(403)
-        .json({
-          msg: `File type '${file.contentType}' not allowed for streaming.`,
-        });
-    }
-  } catch (err) {
-    console.error(
-      "[Files Route] Error in /stream/:fileIdOrFilename:",
-      err.message
-    );
-    if (!res.headersSent) {
-      if (
-        err.name === "MongoNetworkError" ||
-        err.name === "MongooseServerSelectionError"
-      ) {
-        return res.status(503).send("Database connection error.");
-      }
-      res.status(500).send("Internal Server Error");
-    }
-  }
-});
-
-// @route   GET /api/files/info/:fileIdOrFilename
-// @desc    Get file metadata from GridFS by File ID or filename
-// @access  Public (or Private if needed)
-router.get("/stream/:fileIdOrFilename", async (req, res) => {
-  try {
-    const identifier = req.params.fileIdOrFilename;
-    const gridFSBucket = req.app.get("gridFSBucket"); // THIS IS THE APP-LEVEL BUCKET
-
-    if (!gridFSBucket) {
-      console.error(
-        "[Files Route /stream] GridFSBucket NOT INITIALIZED on app instance."
+        "[Files Route /stream] GridFSBucket not initialized on app instance."
       );
       return res
         .status(500)
@@ -111,7 +30,7 @@ router.get("/stream/:fileIdOrFilename", async (req, res) => {
         _id: new mongoose.Types.ObjectId(identifier),
       });
     } else {
-      // This branch is less likely used if you always pass fileId (ObjectId) from frontend
+      // If not an ObjectId, assume it's a filename (the unique hex name from GridFS)
       fileCursor = gridFSBucket.find({ filename: identifier });
     }
 
@@ -129,40 +48,50 @@ router.get("/stream/:fileIdOrFilename", async (req, res) => {
       `[Files Route /stream] File found: ${file.filename}, contentType: ${file.contentType}, length: ${file.length}`
     );
 
-    // Set necessary headers for streaming and correct MIME type
-    res.set("Content-Type", file.contentType);
-    res.set("Content-Length", file.length.toString()); // Important for some clients
-    // For ToneMidi.fromUrl, 'inline' is fine. 'attachment' would force download.
-    res.set(
-      "Content-Disposition",
-      `inline; filename="${file.metadata?.originalName || file.filename}"`
-    );
-    // Allow cross-origin requests if Tone.js is on a different conceptual origin (though usually not for /api)
-    // res.set('Access-Control-Allow-Origin', '*'); // Already handled by global CORS, but for direct test
+    if (file.contentType === "audio/midi" || file.contentType === "audio/mid" || file.contentType === "application/x-midi") {
+      const originalFilename = file.metadata?.originalName || file.filename || 'download.mid';
 
-    const readStream = gridFSBucket.openDownloadStream(file._id);
+      res.set('Content-Type', file.contentType);
+      res.set('Content-Length', file.length.toString());
+      // Use content-disposition for robust filename handling, especially with special characters.
+      // 'inline' is suitable for ToneMidi.fromUrl. Use 'attachment' to force download.
+      res.set('Content-Disposition', contentDisposition(originalFilename, { type: 'inline' }));
+      // Allow cross-origin requests if Tone.js is on a different conceptual origin (though usually not for /api)
+      // res.set('Access-Control-Allow-Origin', '*'); // Already handled by global CORS, but for direct test
 
-    readStream.on("data", (chunk) => {
-      // console.log(`[Files Route /stream] Sending chunk for ${file.filename}`); // Can be very verbose
-    });
+      const readStream = gridFSBucket.openDownloadStream(file._id);
 
-    readStream.on("error", (streamErr) => {
-      console.error(
-        `[Files Route /stream] GridFS stream error for file ${file.filename} (ID: ${file._id}):`,
-        streamErr
-      );
-      if (!res.headersSent) {
-        res.status(500).send("Error streaming file.");
-      } else {
-        readStream.destroy();
-      }
-    });
+      readStream.on("data", (chunk) => {
+        // console.log(`[Files Route /stream] Sending chunk for ${file.filename}`); // Can be very verbose
+      });
 
-    readStream.on("end", () => {
-      console.log(`[Files Route /stream] Finished streaming ${file.filename}`);
-    });
+      readStream.on("error", (streamErr) => {
+        console.error(
+          `[Files Route /stream] GridFS stream error for file ${file.filename} (ID: ${file._id}):`,
+          streamErr
+        );
+        if (!res.headersSent) {
+          res.status(500).send("Error streaming file.");
+        } else {
+          // If headers are sent, the connection might be broken or in an inconsistent state.
+          // Destroying the stream is a good measure.
+          readStream.destroy();
+        }
+      });
 
-    readStream.pipe(res);
+      readStream.on("end", () => {
+        console.log(`[Files Route /stream] Finished streaming ${file.filename}`);
+      });
+
+      readStream.pipe(res);
+    } else {
+      console.warn(`[Files Route /stream] Attempt to stream non-MIDI file: ${file.filename}, type: ${file.contentType}`);
+      res
+        .status(403)
+        .json({
+          msg: `File type '${file.contentType}' not allowed for streaming. Only MIDI files are streamable.`,
+        });
+    }
   } catch (err) {
     console.error(
       "[Files Route /stream] General error:",
@@ -180,5 +109,11 @@ router.get("/stream/:fileIdOrFilename", async (req, res) => {
     }
   }
 });
+
+
+// @route   GET /api/files/info/:fileIdOrFilename  <-- This was the duplicate, now removed.
+// The functionality of getting file info is implicitly part of the streaming route if needed,
+// or a dedicated info route could be added if just metadata (not the stream) is required.
+// For now, removing the duplicate /stream handler is the main fix.
 
 module.exports = router;

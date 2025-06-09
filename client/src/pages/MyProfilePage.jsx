@@ -1,10 +1,10 @@
 // client/src/pages/MyProfilePage.jsx
 import React, { useEffect, useState, useCallback } from 'react';
-import { Link } from 'react-router-dom'; // <--- THÊM DÒNG NÀY
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import api from '../services/api';
+import { getAuthUser, updateUserProfile } from '../services/apiAuth'; // Import correct service functions
 import '../assets/css/ProfilePage.css';
-import { FaUserCircle, FaEnvelope, FaCalendarAlt, FaInfoCircle, FaEdit, FaSave, FaTimes, FaMusic } from 'react-icons/fa'; // Thêm FaMusic
+import { FaUserCircle, FaEnvelope, FaCalendarAlt, FaInfoCircle, FaEdit, FaSave, FaTimes, FaMusic } from 'react-icons/fa';
 
 const initialProfileState = {
   username: '',
@@ -12,12 +12,11 @@ const initialProfileState = {
   bio: '',
   profile_picture_url: '',
   registration_date: '',
-  midiUploadCount: 0,
-  // Thêm các trường khác bạn mong đợi từ API
+  // midiUploadCount: 0, // This would need to be fetched separately or included in /auth/me response
 };
 
 const MyProfilePage = () => {
-  const { user, loading: authLoading, token } = useAuth();
+  const { user: authContextUser, loading: authLoading, token, loadUser: reloadAuthContextUser } = useAuth(); // Get reload function
   const [profileData, setProfileData] = useState(initialProfileState);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -25,36 +24,39 @@ const MyProfilePage = () => {
   const [formData, setFormData] = useState(initialProfileState);
 
   const fetchProfile = useCallback(async () => {
-    if (user && token) {
+    if (authContextUser && token) { // Use authContextUser for initial check
       setIsLoading(true);
       setError('');
       try {
-        const res = await api.get(`/users/profile/${user.id}`);
+        // Use getAuthUser which calls /api/auth/me
+        const res = await getAuthUser();
         const fetchedData = { ...initialProfileState, ...res.data };
         setProfileData(fetchedData);
-        setFormData(fetchedData);
+        setFormData(fetchedData); // Initialize edit form with fetched data
       } catch (err) {
         console.error("Failed to fetch profile", err.response ? err.response.data : err.message);
         setError("Could not load your profile data. Please try again later.");
-        // Giữ lại thông tin user từ context nếu fetch lỗi, nhưng vẫn là initial cho phần edit
+        // Fallback to context user data if fetch fails, but still allow editing of bio/pic
         const contextUserAsProfile = {
             ...initialProfileState,
-            username: user?.username || '',
-            email: user?.email || '',
-            registration_date: user?.registration_date || ''
-        }
+            username: authContextUser?.username || '',
+            email: authContextUser?.email || '',
+            registration_date: authContextUser?.registration_date || '',
+            bio: authContextUser?.bio || '', // Include bio and pic from context if available
+            profile_picture_url: authContextUser?.profile_picture_url || '',
+        };
         setProfileData(contextUserAsProfile);
         setFormData(contextUserAsProfile);
-
       } finally {
         setIsLoading(false);
       }
-    } else if (!authLoading && !user) {
+    } else if (!authLoading && !authContextUser) {
       setError("You need to be logged in to view your profile.");
       setIsLoading(false);
       setProfileData(initialProfileState);
+      setFormData(initialProfileState);
     }
-  }, [user, token, authLoading]);
+  }, [authContextUser, token, authLoading]);
 
   useEffect(() => {
     if (!authLoading) {
@@ -64,7 +66,11 @@ const MyProfilePage = () => {
 
   const handleEditToggle = () => {
     if (isEditing) {
-      setFormData(profileData); // Reset form về dữ liệu profile hiện tại khi cancel
+      // When canceling edit, reset formData to the current profileData (which might be from context or last successful fetch/save)
+      setFormData(profileData);
+    } else {
+      // When starting edit, ensure formData is based on the latest profileData
+      setFormData(profileData);
     }
     setIsEditing(!isEditing);
     setError('');
@@ -80,23 +86,25 @@ const MyProfilePage = () => {
     setError('');
     try {
       const updatePayload = {
-        bio: formData.bio,
-        profile_picture_url: formData.profile_picture_url,
+        bio: formData.bio || '', // Ensure empty string if null/undefined
+        profile_picture_url: formData.profile_picture_url || '',
       };
-      const res = await api.put(`/users/profile/${user.id}`, updatePayload);
-      const updatedData = { ...initialProfileState, ...res.data };
+      // Use updateUserProfile which calls PUT /api/auth/me/profile
+      const res = await updateUserProfile(updatePayload);
+      const updatedData = { ...profileData, ...res.data }; // Merge with existing profileData to keep fields not returned by update
       setProfileData(updatedData);
       setFormData(updatedData);
       setIsEditing(false);
+      reloadAuthContextUser(); // Reload user in AuthContext to reflect changes globally (e.g., navbar)
       alert("Profile updated successfully!");
     } catch (err) {
       console.error("Failed to update profile", err.response ? err.response.data : err.message);
-      setError(err.response?.data?.error || "Could not update profile. Please try again.");
+      setError(err.response?.data?.msg || err.response?.data?.error || "Could not update profile. Please try again.");
     }
     setIsLoading(false);
   };
 
-  if (authLoading) {
+  if (authLoading && !authContextUser) { // Show global loading only if auth context is still loading initial user
     return (
       <div className="loading-container global-loading">
         <div className="spinner"></div>
@@ -105,8 +113,7 @@ const MyProfilePage = () => {
     );
   }
 
-  // Hiển thị loading chỉ khi đang fetch và chưa có username nào (cả từ profileData lẫn user context)
-  if (isLoading && !profileData.username && !user?.username) {
+  if (isLoading && !profileData.username && !authContextUser?.username) {
       return (
         <div className="loading-container-page">
             <div className="spinner-page"></div>
@@ -115,14 +122,14 @@ const MyProfilePage = () => {
       );
   }
 
-  if (error && !profileData.username && !user?.username) {
-    return <p className="alert-message alert-error">{error}</p>;
+  if (error && !profileData.username && !authContextUser?.username) {
+    return <p className="alert-message alert-error container">{error}</p>;
   }
 
-  const displayUsername = profileData.username || user?.username || 'User';
-  const displayEmail = profileData.email || user?.email || 'No email provided';
-  const displayRegDate = profileData.registration_date || user?.registration_date;
-  // Sử dụng formData cho các trường đang edit để thay đổi hiển thị ngay lập tức
+  // Prioritize formData for display when editing, then profileData, then authContextUser as fallback
+  const displayUsername = formData.username || profileData.username || authContextUser?.username || 'User';
+  const displayEmail = formData.email || profileData.email || authContextUser?.email || 'No email provided';
+  const displayRegDate = profileData.registration_date || authContextUser?.registration_date;
   const currentBio = isEditing ? formData.bio : profileData.bio;
   const currentProfilePic = isEditing ? formData.profile_picture_url : profileData.profile_picture_url;
 
@@ -158,7 +165,6 @@ const MyProfilePage = () => {
             <label htmlFor="bio">Bio:</label>
             <textarea id="bio" name="bio" value={formData.bio || ''} onChange={handleChange} rows="5" placeholder="Tell us a little about yourself..."></textarea>
           </div>
-          {/* Add more editable fields here if needed */}
           <div className="form-actions">
             <button type="button" onClick={handleEditToggle} className="btn btn-ghost" disabled={isLoading}>
               <FaTimes className="icon"/> Cancel
@@ -179,7 +185,6 @@ const MyProfilePage = () => {
           <div className="profile-detail-item">
             <p><strong>Joined:</strong> {displayRegDate ? new Date(displayRegDate).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</p>
             {/* <p><strong>MIDIs Uploaded:</strong> {profileData.midiUploadCount || 0}</p> */}
-            {/* <p><strong>Last Login:</strong> {profileData.last_login_date ? new Date(profileData.last_login_date).toLocaleString() : 'N/A'}</p> */}
           </div>
         </section>
       )}

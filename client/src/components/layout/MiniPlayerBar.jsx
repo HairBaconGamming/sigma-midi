@@ -2,8 +2,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { usePlayer } from '../../contexts/PlayerContext';
-import { FaPlay, FaPause, FaStepForward, FaStepBackward, FaVolumeUp, FaVolumeMute, FaTimes } from 'react-icons/fa'; // Using FaPlay for play icon
-import '../../assets/css/MiniPlayerBar.css'; // Create this CSS file
+import { FaPlay, FaPause, FaStepForward, FaStepBackward, FaVolumeUp, FaVolumeMute, FaTimes } from 'react-icons/fa';
+import '../../assets/css/MiniPlayerBar.css';
 
 const formatTime = (seconds) => {
     if (isNaN(seconds) || seconds < 0) return '0:00';
@@ -24,11 +24,11 @@ const MiniPlayerBar = () => {
     togglePlay,
     seekPlayer,
     togglePlayerMute,
-    stopPlayer, // To close/clear the player
+    clearAndClosePlayer, // CHANGED: Use new function to fully close and clear
   } = usePlayer();
 
   if (!currentPlayingMidi && !isLoadingPlayer) {
-    return null; // Don't render if nothing is selected or loading
+    return null;
   }
 
   const handleProgressClick = (e) => {
@@ -47,14 +47,13 @@ const MiniPlayerBar = () => {
       )}
       {playerError && !isLoadingPlayer && (
         <div className="player-error-indicator">Error: {playerError} 
-            <button onClick={stopPlayer} className="player-close-btn-error" title="Clear Error"><FaTimes/></button>
+            <button onClick={clearAndClosePlayer} className="player-close-btn-error" title="Clear Error"><FaTimes/></button>
         </div>
       )}
 
       {currentPlayingMidi && !isLoadingPlayer && !playerError && (
         <>
           <div className="mini-player-track-info">
-            {/* Add thumbnail later if desired */}
             <div className="mini-player-text">
               <Link to={`/midi/${currentPlayingMidi._id}`} className="track-title" title={currentPlayingMidi.title}>
                 {currentPlayingMidi.title}
@@ -64,11 +63,9 @@ const MiniPlayerBar = () => {
           </div>
 
           <div className="mini-player-controls-main">
-            {/* <button className="control-btn"><FaStepBackward /></button> */}
             <button onClick={togglePlay} className="control-btn play-pause-btn" aria-label={isPlaying ? 'Pause' : 'Play'}>
               {isPlaying ? <FaPause size={20} /> : <FaPlay size={20} />}
             </button>
-            {/* <button className="control-btn"><FaStepForward /></button> */}
           </div>
           
           <div className="mini-player-progress-section">
@@ -83,10 +80,9 @@ const MiniPlayerBar = () => {
             <button onClick={togglePlayerMute} className="control-btn volume-btn" aria-label={isMuted ? 'Unmute' : 'Mute'}>
               {isMuted ? <FaVolumeMute /> : <FaVolumeUp />}
             </button>
-            <button onClick={() => stopPlayer()} className="control-btn close-player-btn" title="Close Player">
+            <button onClick={clearAndClosePlayer} className="control-btn close-player-btn" title="Close Player"> {/* CHANGED */}
                 <FaTimes />
             </button>
-            {/* Add other controls like queue, shuffle, repeat here if needed */}
           </div>
         </>
       )}
