@@ -2,10 +2,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getAllMidis } from '../services/apiMidis';
 import MidiCard from '../components/midis/MidiCard';
+import PaginationControls from '../components/layout/PaginationControls'; // TẠO COMPONENT NÀY
 import { FaSearch, FaSortAmountDown, FaSortAmountUp, FaFolderOpen } from 'react-icons/fa';
 import '../assets/css/HomePage.css';
 
-// Debounce function
+// Debounce function (giữ nguyên)
 const debounce = (func, delay) => {
   let timeoutId;
   return (...args) => {
@@ -16,6 +17,8 @@ const debounce = (func, delay) => {
   };
 };
 
+const ITEMS_PER_PAGE = 12; // Hoặc lấy từ config, hoặc cho người dùng chọn
+
 const HomePage = () => {
   const [midis, setMidis] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,72 +27,86 @@ const HomePage = () => {
   const [sortBy, setSortBy] = useState('upload_date');
   const [order, setOrder] = useState('desc');
   const [totalFiles, setTotalFiles] = useState(0);
-  // const [currentPage, setCurrentPage] = useState(1);
-  // const [totalPages, setTotalPages] = useState(1);
-  // const filesPerPage = 12; // Or get from config
 
-  const fetchMidis = useCallback(async (currentSearchTerm, currentSortBy, currentOrder) => {
+  // State cho phân trang
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  // itemsPerPage có thể là hằng số hoặc state nếu bạn muốn người dùng thay đổi
+
+  const fetchMidis = useCallback(async (pageToFetch, currentSearchTerm, currentSortBy, currentOrder) => {
+    setLoading(true);
+    setError('');
     try {
-      setLoading(true);
       const params = {
         search: currentSearchTerm,
         sortBy: currentSortBy,
         order: currentOrder,
-        // page: currentPage,
-        // limit: filesPerPage
+        page: pageToFetch, // Sử dụng pageToFetch
+        limit: ITEMS_PER_PAGE
       };
       const res = await getAllMidis(params);
-      // Assuming API returns array directly, or an object like { midis: [], total: X } for pagination
-      if (Array.isArray(res.data)) {
-        setMidis(res.data);
-        setTotalFiles(res.data.length); // Simple count if no pagination from API
-      } else if (res.data && Array.isArray(res.data.midis)) {
+      if (res.data && Array.isArray(res.data.midis)) {
         setMidis(res.data.midis);
-        setTotalFiles(res.data.total);
-        // setTotalPages(Math.ceil(res.data.total / filesPerPage));
+        setTotalFiles(res.data.totalItems || 0); // Sử dụng totalItems từ API
+        setTotalPages(res.data.totalPages || 1); // Sử dụng totalPages từ API
+        setCurrentPage(res.data.currentPage || 1); // Cập nhật currentPage từ API
       } else {
         setMidis([]);
         setTotalFiles(0);
+        setTotalPages(1);
+        setCurrentPage(1);
       }
-      setError('');
     } catch (err) {
       console.error("Failed to fetch MIDIs", err.response ? err.response.data : err.message);
       setError('Failed to load MIDIs. The server might be down or an error occurred.');
       setMidis([]);
       setTotalFiles(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
-  }, []); // Add currentPage, filesPerPage if using pagination
+  }, []); // Bỏ ITEMS_PER_PAGE nếu nó là hằng số
 
-  const debouncedFetchMidis = useCallback(debounce(fetchMidis, 500), [fetchMidis]);
+  const debouncedFetchMidis = useCallback(debounce((...args) => fetchMidis(1, ...args.slice(1)), 500), [fetchMidis]);
+  // Khi search/sort, luôn fetch trang 1
 
   useEffect(() => {
-    // Initial fetch or when sort/order changes directly
-    if (searchTerm === '') { // Avoid double fetch on initial load if searchTerm is also a dep
-        fetchMidis(searchTerm, sortBy, order);
+    // Fetch khi page, sort, hoặc order thay đổi trực tiếp
+    fetchMidis(currentPage, searchTerm, sortBy, order);
+  }, [currentPage, sortBy, order, fetchMidis]); // Bỏ searchTerm vì nó được xử lý bởi debouncedFetchMidis
+
+  useEffect(() => {
+    // Debounced fetch cho search term changes, luôn reset về trang 1
+    if (searchTerm !== '') { // Chỉ debounce khi có search term
+        debouncedFetchMidis(1, searchTerm, sortBy, order); // Luôn fetch trang 1 khi search
+    } else if (searchTerm === '' && midis.length === 0 && !loading) { // Nếu search term rỗng và chưa có data
+        fetchMidis(1, '', sortBy, order); // Fetch lại trang 1
     }
-  }, [sortBy, order, fetchMidis]); // Removed searchTerm to rely on debounced version
-
-  useEffect(() => {
-    // Debounced fetch for search term changes
-    debouncedFetchMidis(searchTerm, sortBy, order);
-  }, [searchTerm, debouncedFetchMidis, sortBy, order]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, debouncedFetchMidis, sortBy, order]); // Không cần fetchMidis ở đây nữa
 
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
-    // setCurrentPage(1); // Reset to first page on new search
+    // Việc reset về trang 1 sẽ được xử lý bởi useEffect của searchTerm
   };
 
   const handleSortByChange = (e) => {
     setSortBy(e.target.value);
-    // setCurrentPage(1);
+    setCurrentPage(1); // Reset về trang 1 khi đổi sort
   };
 
   const handleOrderChange = (e) => {
     setOrder(e.target.value);
-    // setCurrentPage(1);
+    setCurrentPage(1); // Reset về trang 1 khi đổi order
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages && newPage !== currentPage) {
+      setCurrentPage(newPage);
+      // useEffect của currentPage sẽ trigger fetchMidis
+      window.scrollTo(0, 0); // Cuộn lên đầu trang khi chuyển trang
+    }
   };
 
   return (
@@ -98,11 +115,12 @@ const HomePage = () => {
         <FaFolderOpen className="repository-icon" />
         <h1 className="repository-title">
           sigmaMIDI Repository
-          <span className="repository-count">({loading ? '...' : totalFiles} MIDI files)</span>
+          <span className="repository-count">({loading && midis.length === 0 ? '...' : totalFiles} MIDI files)</span>
         </h1>
       </header>
 
       <div className="controls-bar-container">
+        {/* Search and Sort controls (giữ nguyên) */}
         <div className="search-control">
           <FaSearch className="search-icon-input" />
           <input
@@ -122,7 +140,7 @@ const HomePage = () => {
               <option value="views">Most Viewed</option>
               <option value="downloads">Most Downloaded</option>
               <option value="bpm">BPM</option>
-              <option value="size_kb">File Size</option>
+              <option value="size_bytes">File Size</option>
             </select>
           </div>
           <div className="select-wrapper">
@@ -135,39 +153,41 @@ const HomePage = () => {
         </div>
       </div>
 
-      {loading && (
+      {loading && midis.length === 0 && ( // Chỉ hiển thị loading toàn trang nếu chưa có MIDI nào
         <div className="loading-container">
           <div className="spinner"></div>
           <p>Loading MIDIs...</p>
         </div>
       )}
       {error && <p className="error-message-global">{error}</p>}
-      {!loading && !error && midis.length === 0 && (
+      {!loading && !error && midis.length === 0 && totalFiles === 0 && (
         <p className="no-results-message">
           No MIDIs found matching your criteria. Try adjusting your search or upload a new one!
         </p>
       )}
 
-      {!loading && !error && midis.length > 0 && (
+      {/* Luôn hiển thị grid nếu có midis, ngay cả khi đang loading thêm */}
+      {midis.length > 0 && (
         <div className="midi-grid">
           {midis.map((midi) => (
-            <MidiCard key={midi.id} midi={midi} />
+            <MidiCard key={midi._id} midi={midi} />
           ))}
         </div>
       )}
+      {loading && midis.length > 0 && ( // Hiển thị loading nhỏ ở cuối nếu đang load thêm trang
+          <div className="loading-container-inline" style={{marginTop: 'var(--spacing-lg)'}}>
+              <div className="spinner-inline"></div> Loading more...
+          </div>
+      )}
 
-      {/* Placeholder for Pagination Controls */}
-      {/* {!loading && !error && totalPages > 1 && (
-        <div className="pagination-controls">
-          <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
-            Previous
-          </button>
-          <span>Page {currentPage} of {totalPages}</span>
-          <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
-            Next
-          </button>
-        </div>
-      )} */}
+
+      {!loading && totalPages > 1 && (
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+        />
+      )}
     </div>
   );
 };
