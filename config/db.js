@@ -212,33 +212,48 @@ const createGridFsStorage = () => {
   );
 
   return new GridFsStorage({
-    db: nativeDbReadyPromise, // Pass the promise that waits for nativeDbForGridFS to be set
+    db: nativeDbReadyPromise,
     file: (req, file) => {
       return new Promise((resolve, reject) => {
+        // Log MIME type gốc từ multer
+        console.log(
+          `[GridFS Storage File Fn] Original file: ${file.originalname}, Original multer mimetype: ${file.mimetype}`
+        );
+
         crypto.randomBytes(16, (err, buf) => {
           if (err) {
+            console.error("[GridFS Storage File Fn] Crypto error:", err);
             return reject(err);
           }
           const filename =
             buf.toString("hex") + path.extname(file.originalname);
           let determinedContentType = file.mimetype; // Mặc định từ multer
 
-          // Ghi đè nếu mimetype không phải là MIDI nhưng phần mở rộng là .mid hoặc .midi
           const extension = path.extname(file.originalname).toLowerCase();
-          if (
-            (extension === ".mid" || extension === ".midi") &&
-            determinedContentType !== "audio/midi" &&
-            determinedContentType !== "audio/mid"
-          ) {
+          if (extension === ".mid" || extension === ".midi") {
+            if (
+              determinedContentType !== "audio/midi" &&
+              determinedContentType !== "audio/mid"
+            ) {
+              console.warn(
+                `[GridFS Storage File Fn] Overriding contentType for ${file.originalname}. Original: ${file.mimetype}, New: audio/midi`
+              );
+              determinedContentType = "audio/midi";
+            } else {
+              console.log(
+                `[GridFS Storage File Fn] ContentType for ${file.originalname} is already MIDI: ${determinedContentType}`
+              );
+            }
+          } else {
             console.warn(
-              `[GridFS Storage File Fn] Overriding contentType for ${file.originalname}. Original: ${file.mimetype}, New: audio/midi`
+              `[GridFS Storage File Fn] File ${file.originalname} is not a .mid or .midi file based on extension. Keeping original mimetype: ${determinedContentType}`
             );
-            determinedContentType = "audio/midi";
           }
 
           const fileInfo = {
             filename: filename,
-            bucketName: "uploads",
+            bucketName: "uploads", // Phải khớp với bucketName trong server.js GridFSBucket setup
+            contentType: determinedContentType, // QUAN TRỌNG: Đảm bảo đây là giá trị đúng
             metadata: {
               originalName: file.originalname,
               uploaderId: req.user ? req.user.id.toString() : null,
@@ -246,9 +261,14 @@ const createGridFsStorage = () => {
                 req.body.title ||
                 file.originalname.replace(/\.[^/.]+$/, "") ||
                 "Untitled",
-              contentType: determinedContentType, // Sử dụng contentType đã xác định
+              // Không cần lưu contentType trong metadata nếu đã có ở cấp độ fileInfo
+              // contentType: determinedContentType // BỎ DÒNG NÀY TRONG METADATA NẾU ĐÃ CÓ Ở TRÊN
             },
           };
+          console.log(
+            `[GridFS Storage File Fn] Resolving with fileInfo for ${file.originalname}:`,
+            fileInfo
+          );
           resolve(fileInfo);
         });
       });

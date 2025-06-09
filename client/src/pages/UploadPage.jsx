@@ -124,8 +124,10 @@ const UploadPage = () => {
       const allowedMimeTypes = ['audio/midi', 'audio/mid', 'application/x-midi'];
       const allowedExtensions = ['.mid', '.midi'];
       const fileExtension = selectedFile.name.slice(selectedFile.name.lastIndexOf('.')).toLowerCase();
+      
+      console.log("[UploadPage onDrop] Dragged file:", selectedFile.name, "Reported type:", selectedFile.type);
 
-      if (allowedMimeTypes.includes(selectedFile.type.toLowerCase()) || allowedExtensions.includes(fileExtension)) {
+      if (allowedExtensions.includes(fileExtension)) {
         if (selectedFile.size > 15 * 1024 * 1024) { // 15MB limit
             setError('File is too large. Maximum size is 15MB.');
             setFile(null);

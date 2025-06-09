@@ -91,6 +91,8 @@ router.post('/upload', authMiddleware, ensureGridFsReadyForUpload, (req, res, ne
             }
             return res.status(400).json({ msg: 'Title is required.' });
         }
+      
+        console.log('[MIDI Upload Route] req.file received by controller:', JSON.stringify(req.file, null, 2));
 
         const { title, artist, description, genre, tags, duration_seconds, key_signature, time_signature,
                 difficulty, instrumentation, arrangement_by, bpm, is_public, thumbnail_url } = req.body;
@@ -118,7 +120,7 @@ router.post('/upload', authMiddleware, ensureGridFsReadyForUpload, (req, res, ne
                 is_public: is_public !== undefined ? (String(is_public).toLowerCase() === 'true' || is_public === true || is_public === '1') : true,
                 thumbnail_url
             });
-
+            console.log('[MIDI Upload Route] Data for new Midi document:', JSON.stringify(newMidi.toObject(), null, 2));
             const savedMidi = await newMidi.save();
             // Populate uploader info for the response
             const populatedMidi = await Midi.findById(savedMidi._id).populate('uploader', 'username profile_picture_url');
