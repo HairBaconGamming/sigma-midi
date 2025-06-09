@@ -1,5 +1,6 @@
 // client/src/pages/info/AboutUsPage.jsx
 import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import '../../assets/css/InfoPage.css'; // We'll create a generic InfoPage.css
 
@@ -58,7 +59,7 @@ const AboutUsPage = () => {
             Whether you're here to upload your masterpieces, find the perfect MIDI for your project, or simply explore the world of digital music, we're thrilled to have you. Join our community, start sharing, and let the music play!
           </p>
           <p>
-            If you have any questions, feedback, or suggestions, please don't hesitate to <a href="/contact">contact us</a>.
+            If you have any questions, feedback, or suggestions, please don't hesitate to <Link to="/contact">contact us</Link>.
           </p>
         </section>
       </div>

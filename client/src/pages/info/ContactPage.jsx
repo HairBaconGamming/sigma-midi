@@ -1,5 +1,6 @@
 // client/src/pages/info/ContactPage.jsx
 import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import '../../assets/css/InfoPage.css'; // Re-use for general styling
 import '../../assets/css/ContactPage.css'; // Specific styles for contact form
@@ -66,7 +67,7 @@ const ContactPage = () => {
               <h3>Copyright Concerns</h3>
               <p>To report a copyright infringement or for DMCA notices, please email:</p>
               <p><strong>Email:</strong> <a href="mailto:copyright@sigmamidi.com">copyright@sigmamidi.com</a></p>
-              <p>Please include all necessary information as outlined in our <a href="/terms">Terms of Service</a>.</p>
+              <p>Please include all necessary information as outlined in our <Link href="/terms">Terms of Service</Link>.</p>
             </div>
           </div>
 

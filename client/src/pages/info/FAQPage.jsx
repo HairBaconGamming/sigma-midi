@@ -1,5 +1,6 @@
 // client/src/pages/info/FAQPage.jsx
 import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import '../../assets/css/InfoPage.css';
 
@@ -68,7 +69,7 @@ const FAQPage = () => {
           <h2>Contact</h2>
           <div className="faq-item">
             <h3>I have another question. How can I contact you?</h3>
-            <p>Please visit our <a href="/contact">Contact page</a> for ways to get in touch with the sigmaMIDI team.</p>
+            <p>Please visit our <Link href="/contact">Contact page</Link> for ways to get in touch with the sigmaMIDI team.</p>
           </div>
         </section>
       </div>

@@ -77,7 +77,7 @@ const PrivacyPolicyPage = () => {
           <p>You are advised to review this Privacy Policy periodically for any changes. Changes to this Privacy Policy are effective when they are posted on this page.</p>
 
           <h2>9. Contact Us</h2>
-          <p>If you have any questions about this Privacy Policy, please <a href="/contact">contact us</a>.</p>
+          <p>If you have any questions about this Privacy Policy, please <Link to="/contact">contact us</Link>.</p>
         </section>
       </div>
     </>
