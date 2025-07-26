@@ -12,7 +12,7 @@ const midiRoutes = require('./routes/midis');
 const fileRoutes = require('./routes/files');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 10000; 
 
 // Middleware
 app.use(cors({
